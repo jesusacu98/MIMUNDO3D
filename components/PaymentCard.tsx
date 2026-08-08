@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CreditCard, Copy, Check } from 'lucide-react';
+import { event } from '@/lib/gtag';
 
 interface BankAccount {
   bank_name: string;
@@ -25,6 +26,9 @@ export default function PaymentCard({ clientName, bankAccount }: PaymentCardProp
     try {
       await navigator.clipboard.writeText(copyValue);
       setCopied(true);
+      event('copy_bank_details', {
+        method: bankAccount.interbank_clabe ? 'clabe' : 'card_number',
+      });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Error al copiar al portapapeles: ', err);

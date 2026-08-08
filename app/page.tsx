@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin } from "lucide-react";
+import TrackedLink from "@/components/TrackedLink";
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -173,53 +174,66 @@ export default function Home() {
             <ul className="space-y-3 text-sm text-white/80">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://mail.google.com/mail/?view=cm&fs=1&to=mimundo3d.studio@gmail.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: "email", source: "footer" }}
                 >
                   mimundo3d.studio@gmail.com
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-white" />
-                <a href="tel:+526691224168" className="hover:text-white transition-colors">
+                <TrackedLink
+                  href="tel:+526691224168"
+                  className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: "phone", source: "footer" }}
+                >
                   +52 (669) 122-4168
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <WhatsAppIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: "whatsapp", source: "footer" }}
                 >
                   WhatsApp
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <InstagramIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://www.instagram.com/mimundo3d.studio/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="select_content"
+                  eventParams={{ content_type: "social_link", item_id: "instagram" }}
                 >
                   Instagram
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <FacebookIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://www.facebook.com/people/MiMundo3D/61590489636586/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="select_content"
+                  eventParams={{ content_type: "social_link", item_id: "facebook" }}
                 >
                   Facebook
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-white" />

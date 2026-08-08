@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, Printer, ArrowLeft, X, Mail, Phone, MapPin } from 'lucide-react';
+import TrackedLink from '@/components/TrackedLink';
+import { event } from '@/lib/gtag';
 
 const WHATSAPP_NUMBER = '526691224168';
 const WHATSAPP_MESSAGE = encodeURIComponent(
@@ -348,6 +350,7 @@ export default function Catalogo() {
     setEslogan('');
     setCharacterName('');
     setAttemptedSubmit(false);
+    event('view_item', { item_name: product.name, item_category: product.category });
   };
 
   useEffect(() => {
@@ -362,6 +365,14 @@ export default function Catalogo() {
       document.body.style.overflow = '';
     };
   }, [selectedProduct]);
+
+  useEffect(() => {
+    if (!search.trim()) return;
+    const timeout = setTimeout(() => {
+      event('search', { search_term: search.trim() });
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   return (
     <div className="flex flex-col min-h-screen min-w-0 bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
@@ -414,7 +425,10 @@ export default function Catalogo() {
             {CATEGORIES.map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  setSelectedCategory(category);
+                  event('select_content', { content_type: 'category_filter', item_id: category });
+                }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedCategory === category
                     ? 'bg-primary text-white shadow-md shadow-primary/20'
@@ -484,53 +498,66 @@ export default function Catalogo() {
             <ul className="space-y-3 text-sm text-white/80">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://mail.google.com/mail/?view=cm&fs=1&to=mimundo3d.studio@gmail.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: 'email', source: 'footer' }}
                 >
                   mimundo3d.studio@gmail.com
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-white" />
-                <a href="tel:+526691224168" className="hover:text-white transition-colors">
+                <TrackedLink
+                  href="tel:+526691224168"
+                  className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: 'phone', source: 'footer' }}
+                >
                   +52 (669) 122-4168
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <WhatsAppIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="generate_lead"
+                  eventParams={{ method: 'whatsapp', source: 'footer' }}
                 >
                   WhatsApp
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <InstagramIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://www.instagram.com/mimundo3d.studio/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="select_content"
+                  eventParams={{ content_type: 'social_link', item_id: 'instagram' }}
                 >
                   Instagram
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <FacebookIcon className="w-4 h-4 text-white" />
-                <a
+                <TrackedLink
                   href="https://www.facebook.com/people/MiMundo3D/61590489636586/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
+                  eventName="select_content"
+                  eventParams={{ content_type: 'social_link', item_id: 'facebook' }}
                 >
                   Facebook
-                </a>
+                </TrackedLink>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-white" />
@@ -706,6 +733,12 @@ export default function Catalogo() {
                     }${characterName.trim() ? `, personaje: ${characterName.trim()}` : ''}${
                       businessName.trim() ? `, negocio/marca: ${businessName.trim()}` : ''
                     }${eslogan.trim() ? `, eslogan: ${eslogan.trim()}` : ''}, color: ${selectedColor}. ¿Me pueden dar más información?`;
+                    event('generate_lead', {
+                      method: 'whatsapp',
+                      source: 'catalog_modal',
+                      item_name: selectedProduct.name,
+                      item_category: selectedProduct.category,
+                    });
                     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
                   }}
                   className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"

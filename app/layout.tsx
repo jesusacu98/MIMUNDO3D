@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
+import GoogleAnalyticsPageview from "@/components/GoogleAnalyticsPageview";
+import { GA_MEASUREMENT_ID } from "@/lib/gtag";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,18 +34,25 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-W7D2NG2TBQ"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-W7D2NG2TBQ');
-          `}
-        </Script>
+        {GA_MEASUREMENT_ID && (
+          <>
+            <Suspense fallback={null}>
+              <GoogleAnalyticsPageview />
+            </Suspense>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
+              `}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );
