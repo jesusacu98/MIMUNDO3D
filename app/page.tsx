@@ -173,7 +173,12 @@ export default function Home() {
             <ul className="space-y-3 text-sm text-white/80">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-white" />
-                <a href="mailto:mimundo3d.studio@gmail.com" className="hover:text-white transition-colors">
+                <a
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=mimundo3d.studio@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
                   mimundo3d.studio@gmail.com
                 </a>
               </li>

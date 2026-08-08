@@ -3,9 +3,44 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, SlidersHorizontal, Printer, ArrowLeft, X } from 'lucide-react';
+import { Search, SlidersHorizontal, Printer, ArrowLeft, X, Mail, Phone, MapPin } from 'lucide-react';
 
 const WHATSAPP_NUMBER = '526691224168';
+const WHATSAPP_MESSAGE = encodeURIComponent(
+  "¡Hola, MiMundo3D! 👋✨\n\n💡 Tengo una idea en mente que quiero materializar en 3D 🚀🤖.\n¿Les puedo compartir una foto 📸 o un modelo 🪐 para que me ayuden a cotizarlo? 🛠️\n\n¡Quedo atento! 📥"
+);
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`;
+
+const AVAILABLE_COLORS = [
+  { name: 'Rosa', hex: '#ec4899' },
+  { name: 'Amarillo', hex: '#facc15' },
+  { name: 'Azul', hex: '#3b82f6' },
+  { name: 'Rojo', hex: '#ef4444' },
+  { name: 'Naranja', hex: '#f97316' },
+  { name: 'Verde', hex: '#22c55e' },
+  { name: 'Dorado', hex: '#c9a227' },
+  { name: 'Blanco', hex: '#ffffff' },
+  { name: 'Negro', hex: '#18181b' },
+  { name: 'Piel', hex: '#e8b796' },
+];
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  );
+}
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -34,6 +69,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Llavero impreso en 3D con tu nombre grabado, pompón de peluche y dije colgante. Disponible en varios colores.',
     price: 'Desde $100 MXN',
     image: '/catalogo/1.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: false,
   },
   {
     id: 2,
@@ -42,6 +80,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Combo de dijes 3D personalizados: tu nombre, tu mascota y tu hobby favorito, unidos en un solo llavero.',
     price: 'Desde $100 MXN',
     image: '/catalogo/2.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   },
   {
     id: 3,
@@ -50,6 +91,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Llavero con la silueta de tu personaje, mascota o diseño favorito, personalizado con el nombre que quieras.',
     price: 'Desde $100 MXN',
     image: '/catalogo/3.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   },
   {
     id: 4,
@@ -58,6 +102,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'El regalo perfecto para celebrar la graduación: nombre y año grabados en un birrete impreso en 3D.',
     price: 'Desde $25 MXN',
     image: '/catalogo/4.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: false,
   },
   {
     id: 5,
@@ -66,6 +113,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'El regalo perfecto para celebrar la graduación: nombre y año grabados en un imán impreso en 3D para el refri.',
     price: 'Desde $25 MXN',
     image: '/catalogo/5.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: false,
   },
   {
     id: 6,
@@ -74,6 +124,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Nombre en 3D y tu personaje favorito. Perfectas para decorar un cuarto o como centro de mesa en fiestas.',
     price: 'Desde $200 MXN',
     image: '/catalogo/6.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   },
   {
     id: 7,
@@ -82,6 +135,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Nombre en 3D y tu personaje personalizado. Ideal para cumpleaños, baby shower o decoración de eventos.',
     price: 'Desde $200 MXN',
     image: '/catalogo/7.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   },
   {
     id: 8,
@@ -90,6 +146,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Expositor personalizado con tus redes sociales, código QR y chip NFC integrado, para que tus clientes te encuentren con solo acercar el celular.',
     price: 'Desde $350 MXN',
     image: '/catalogo/8.jpg',
+    personalizable: false,
+    businessInfo: true,
+    characterOption: false,
   },
   {
     id: 9,
@@ -98,6 +157,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'El mismo expositor, adaptado a los colores, logo y redes sociales de tu negocio.',
     price: 'Desde $350 MXN',
     image: '/catalogo/9.jpg',
+    personalizable: false,
+    businessInfo: true,
+    characterOption: false,
   },
   {
     id: 10,
@@ -106,6 +168,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Medalla dorada personalizada con el nombre del alumno y su grupo, ideal para reconocimientos y clausuras escolares.',
     price: 'Desde $40 MXN',
     image: '/catalogo/10.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: false,
   },
   {
     id: 11,
@@ -114,6 +179,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'Cuadro decorativo con la playera de tu jugador favorito personalizada con tu nombre, enmarcada y lista para colgar.',
     price: 'Desde $350 MXN',
     image: '/catalogo/11.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   },
   {
     id: 12,
@@ -122,6 +190,9 @@ const PLACEHOLDER_PRODUCTS = [
     description: 'El mismo cuadro, con la playera y el jugador que tú elijas, personalizado con tu nombre.',
     price: 'Desde $350 MXN',
     image: '/catalogo/12.jpg',
+    personalizable: true,
+    businessInfo: false,
+    characterOption: true,
   }
 ];
 
@@ -165,6 +236,12 @@ export default function Catalogo() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [selectedProduct, setSelectedProduct] = useState<(typeof PLACEHOLDER_PRODUCTS)[number] | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [customName, setCustomName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [eslogan, setEslogan] = useState('');
+  const [characterName, setCharacterName] = useState('');
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const filteredProducts = PLACEHOLDER_PRODUCTS.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -172,6 +249,16 @@ export default function Catalogo() {
     const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+
+  const openProduct = (product: (typeof PLACEHOLDER_PRODUCTS)[number]) => {
+    setSelectedProduct(product);
+    setSelectedColor(null);
+    setCustomName('');
+    setBusinessName('');
+    setEslogan('');
+    setCharacterName('');
+    setAttemptedSubmit(false);
+  };
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -256,7 +343,7 @@ export default function Catalogo() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                onClick={() => setSelectedProduct(product)}
+                onClick={() => openProduct(product)}
                 className="bg-white border border-zinc-200/60 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
               >
                 <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden">
@@ -273,7 +360,7 @@ export default function Catalogo() {
                   <div className="flex items-center justify-between pt-3 border-t border-zinc-100">
                     <span className="text-sm font-extrabold text-zinc-950">{product.price}</span>
                     <button
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={() => openProduct(product)}
                       className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1 group/btn cursor-pointer"
                     >
                       Ver Detalles
@@ -292,8 +379,87 @@ export default function Catalogo() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-zinc-200 py-8 text-center text-xs text-zinc-500 mt-auto">
-        <p>© {new Date().getFullYear()} MIMUNDO3D. Todos los derechos reservados.</p>
+      <footer className="mt-auto bg-primary py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4 bg-white w-fit px-3 py-1.5 rounded-lg">
+              <Image src="/logo.png" alt="MIMUNDO3D" width={1024} height={161} className="h-6 w-auto" />
+            </div>
+            <p className="text-sm text-white/80 max-w-xs">
+              Donde tus ideas toman forma.
+            </p>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Contacto</h4>
+            <ul className="space-y-3 text-sm text-white/80">
+              <li className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-white" />
+                <a
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=mimundo3d.studio@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  mimundo3d.studio@gmail.com
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-white" />
+                <a href="tel:+526691224168" className="hover:text-white transition-colors">
+                  +52 (669) 122-4168
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <WhatsAppIcon className="w-4 h-4 text-white" />
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  WhatsApp
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <InstagramIcon className="w-4 h-4 text-white" />
+                <a
+                  href="https://www.instagram.com/mimundo3d.studio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Instagram
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <FacebookIcon className="w-4 h-4 text-white" />
+                <a
+                  href="https://www.facebook.com/people/MiMundo3D/61590489636586/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Facebook
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-white" />
+                <span>Mazatlán, Sinaloa</span>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Enlaces Rápidos</h4>
+            <div className="flex flex-col space-y-2 text-sm text-white/80">
+              <Link href="/" className="hover:text-white transition-colors">Inicio</Link>
+              <Link href="/catalogo" className="hover:text-white transition-colors">Catálogo de Productos</Link>
+              <a href="#" className="hover:text-white transition-colors">Términos de Servicio</a>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-white/20 text-center text-xs text-white">
+          <p>© {new Date().getFullYear()} MIMUNDO3D. Todos los derechos reservados.</p>
+        </div>
       </footer>
 
       {/* Product Detail Modal */}
@@ -328,19 +494,135 @@ export default function Catalogo() {
               </span>
               <h2 className="text-2xl font-bold text-zinc-950 mt-1 mb-3">{selectedProduct.name}</h2>
               <p className="text-sm text-zinc-600 leading-relaxed mb-6">{selectedProduct.description}</p>
+
+              {selectedProduct.personalizable && (
+                <div className="mb-6">
+                  <label htmlFor="custom-name" className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
+                    ¿Qué nombre quieres que lleve? <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    id="custom-name"
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Ej. Adriana"
+                    className={`w-full mt-2 px-4 py-2.5 bg-zinc-50 border rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all ${
+                      attemptedSubmit && !customName.trim() ? 'border-red-400' : 'border-zinc-200'
+                    }`}
+                  />
+                  {attemptedSubmit && !customName.trim() && (
+                    <p className="text-xs text-red-500 mt-1">Escribe el nombre que quieres que lleve.</p>
+                  )}
+                </div>
+              )}
+
+              {selectedProduct.characterOption && (
+                <div className="mb-6">
+                  <label htmlFor="character-name" className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
+                    ¿Qué personaje quieres? (opcional)
+                  </label>
+                  <input
+                    id="character-name"
+                    type="text"
+                    value={characterName}
+                    onChange={(e) => setCharacterName(e.target.value)}
+                    placeholder="Ej. La rana René"
+                    className="w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all"
+                  />
+                </div>
+              )}
+
+              {selectedProduct.businessInfo && (
+                <>
+                  <div className="mb-6">
+                    <label htmlFor="business-name" className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
+                      Nombre de tu negocio o marca <span className="text-primary">*</span>
+                    </label>
+                    <input
+                      id="business-name"
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Ej. El Malcriado Elotes"
+                      className={`w-full mt-2 px-4 py-2.5 bg-zinc-50 border rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all ${
+                        attemptedSubmit && !businessName.trim() ? 'border-red-400' : 'border-zinc-200'
+                      }`}
+                    />
+                    {attemptedSubmit && !businessName.trim() && (
+                      <p className="text-xs text-red-500 mt-1">Escribe el nombre de tu negocio o marca.</p>
+                    )}
+                  </div>
+
+                  <div className="mb-6">
+                    <label htmlFor="eslogan" className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
+                      Eslogan <span className="text-primary">*</span>
+                    </label>
+                    <input
+                      id="eslogan"
+                      type="text"
+                      value={eslogan}
+                      onChange={(e) => setEslogan(e.target.value)}
+                      placeholder="Ej. El toque perfecto para tu antojo"
+                      className={`w-full mt-2 px-4 py-2.5 bg-zinc-50 border rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all ${
+                        attemptedSubmit && !eslogan.trim() ? 'border-red-400' : 'border-zinc-200'
+                      }`}
+                    />
+                    {attemptedSubmit && !eslogan.trim() && (
+                      <p className="text-xs text-red-500 mt-1">Escribe el eslogan de tu negocio.</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div className="mb-6">
+                <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
+                  Color {selectedColor ? `— ${selectedColor}` : ''} <span className="text-primary">*</span>
+                </span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {AVAILABLE_COLORS.map((color) => (
+                    <button
+                      key={color.name}
+                      onClick={() => setSelectedColor(color.name === selectedColor ? null : color.name)}
+                      title={color.name}
+                      aria-label={color.name}
+                      className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
+                        selectedColor === color.name
+                          ? 'border-primary ring-2 ring-primary ring-offset-2'
+                          : 'border-zinc-200 hover:border-zinc-300'
+                      }`}
+                      style={{ backgroundColor: color.hex }}
+                    />
+                  ))}
+                </div>
+                {attemptedSubmit && !selectedColor && (
+                  <p className="text-xs text-red-500 mt-2">Selecciona un color.</p>
+                )}
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t border-zinc-100">
                 <span className="text-2xl font-extrabold text-zinc-950">{selectedProduct.price}</span>
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                    `¡Hola, MiMundo3D! 👋 Me interesa este producto: ${selectedProduct.name} (${selectedProduct.category}). ¿Me pueden dar más información?`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => {
+                    const missingName = selectedProduct.personalizable && !customName.trim();
+                    const missingBusinessName = selectedProduct.businessInfo && !businessName.trim();
+                    const missingEslogan = selectedProduct.businessInfo && !eslogan.trim();
+                    const missingColor = !selectedColor;
+                    if (missingName || missingBusinessName || missingEslogan || missingColor) {
+                      setAttemptedSubmit(true);
+                      return;
+                    }
+                    const message = `¡Hola, MiMundo3D! 👋 Me interesa este producto: ${selectedProduct.name} (${selectedProduct.category})${
+                      customName.trim() ? `, nombre: ${customName.trim()}` : ''
+                    }${characterName.trim() ? `, personaje: ${characterName.trim()}` : ''}${
+                      businessName.trim() ? `, negocio/marca: ${businessName.trim()}` : ''
+                    }${eslogan.trim() ? `, eslogan: ${eslogan.trim()}` : ''}, color: ${selectedColor}. ¿Me pueden dar más información?`;
+                    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+                  }}
                   className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
                 >
                   <WhatsAppIcon className="w-4 h-4" />
                   Pedir por WhatsApp
-                </a>
+                </button>
               </div>
             </div>
           </div>
