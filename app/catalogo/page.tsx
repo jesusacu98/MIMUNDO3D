@@ -1,78 +1,207 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Search, SlidersHorizontal, Printer, ArrowLeft } from 'lucide-react';
+import { Search, SlidersHorizontal, Printer, ArrowLeft, X } from 'lucide-react';
 
-const CATEGORIES = ['Todos', 'FDM', 'Resina (SLA)', 'NFC Inteligente', 'Accesorios'];
+const WHATSAPP_NUMBER = '526691224168';
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+      <path d="M12.004 2.003c-5.514 0-9.997 4.483-9.997 9.997 0 1.762.464 3.484 1.343 4.997L2.02 22l5.116-1.343a9.955 9.955 0 0 0 4.868 1.257h.001c5.514 0 9.997-4.483 9.997-9.997 0-2.669-1.038-5.176-2.926-7.064a9.94 9.94 0 0 0-7.072-2.933zm5.848 15.845a8.302 8.302 0 0 1-4.851 1.548h-.001a8.29 8.29 0 0 1-4.229-1.156l-.304-.18-3.038.797.811-2.961-.198-.304a8.264 8.264 0 0 1-1.267-4.395c0-4.577 3.727-8.302 8.306-8.302a8.26 8.26 0 0 1 5.873 2.433 8.246 8.246 0 0 1 2.43 5.873c0 4.578-3.726 8.303-8.303 8.303z" />
+    </svg>
+  );
+}
+
+const CATEGORIES = [
+  'Todos',
+  'Llaveros',
+  'Imanes',
+  'Eventos',
+  'Negocios y Marcas',
+  'Escolares',
+  'Decoración',
+];
 
 const PLACEHOLDER_PRODUCTS = [
   {
     id: 1,
-    name: 'Expositor NFC de Pago BBVA/Clip',
-    category: 'NFC Inteligente',
-    description: 'Soporte impreso en 3D premium con chip NFC integrado y código QR grabado para facilitar transferencias.',
-    price: '$350 MXN',
-    badge: 'Popular',
+    name: 'Nombre + Pompón',
+    category: 'Llaveros',
+    description: 'Llavero impreso en 3D con tu nombre grabado, pompón de peluche y dije colgante. Disponible en varios colores.',
+    price: 'Desde $100 MXN',
+    image: '/catalogo/1.jpg',
   },
   {
     id: 2,
-    name: 'Figura Coleccionable - Dragón Articulado',
-    category: 'FDM',
-    description: 'Impresión articulada de alta precisión en material PLA seda multicolor, sin necesidad de ensamblaje.',
-    price: '$240 MXN',
-    badge: 'Nuevo',
+    name: 'Nombre + Mascota + Hobby',
+    category: 'Llaveros',
+    description: 'Combo de dijes 3D personalizados: tu nombre, tu mascota y tu hobby favorito, unidos en un solo llavero.',
+    price: 'Desde $100 MXN',
+    image: '/catalogo/2.jpg',
   },
   {
     id: 3,
-    name: 'Busto Escultura Griega Clásica',
-    category: 'Resina (SLA)',
-    description: 'Impresión en resina fotosensible de ultra-definición (4K) con detalles microscópicos y acabado mate suave.',
-    price: '$450 MXN',
-    badge: 'Destacado',
+    name: 'Nombre + Personaje',
+    category: 'Llaveros',
+    description: 'Llavero con la silueta de tu personaje, mascota o diseño favorito, personalizado con el nombre que quieras.',
+    price: 'Desde $100 MXN',
+    image: '/catalogo/3.jpg',
   },
   {
     id: 4,
-    name: 'Organizador Modular de Escritorio',
-    category: 'FDM',
-    description: 'Sistema personalizable con soportes para plumas, celular y cajones pequeños. Impreso en PETG resistente.',
-    price: '$180 MXN',
-    badge: 'Útil',
+    name: 'Graduación',
+    category: 'Llaveros',
+    description: 'El regalo perfecto para celebrar la graduación: nombre y año grabados en un birrete impreso en 3D.',
+    price: 'Desde $25 MXN',
+    image: '/catalogo/4.jpg',
+  },
+  {
+    id: 5,
+    name: 'Imán de Graduación',
+    category: 'Imanes',
+    description: 'El regalo perfecto para celebrar la graduación: nombre y año grabados en un imán impreso en 3D para el refri.',
+    price: 'Desde $25 MXN',
+    image: '/catalogo/5.jpg',
+  },
+  {
+    id: 6,
+    name: 'Letras 3D con Nombre + Personaje',
+    category: 'Eventos',
+    description: 'Nombre en 3D y tu personaje favorito. Perfectas para decorar un cuarto o como centro de mesa en fiestas.',
+    price: 'Desde $200 MXN',
+    image: '/catalogo/6.jpg',
+  },
+  {
+    id: 7,
+    name: 'Letras 3D con Nombre',
+    category: 'Eventos',
+    description: 'Nombre en 3D y tu personaje personalizado. Ideal para cumpleaños, baby shower o decoración de eventos.',
+    price: 'Desde $200 MXN',
+    image: '/catalogo/7.jpg',
+  },
+  {
+    id: 8,
+    name: 'Display Redes Sociales + QR + NFC',
+    category: 'Negocios y Marcas',
+    description: 'Expositor personalizado con tus redes sociales, código QR y chip NFC integrado, para que tus clientes te encuentren con solo acercar el celular.',
+    price: 'Desde $350 MXN',
+    image: '/catalogo/8.jpg',
+  },
+  {
+    id: 9,
+    name: 'Display Redes Sociales + QR + NFC',
+    category: 'Negocios y Marcas',
+    description: 'El mismo expositor, adaptado a los colores, logo y redes sociales de tu negocio.',
+    price: 'Desde $350 MXN',
+    image: '/catalogo/9.jpg',
+  },
+  {
+    id: 10,
+    name: 'Medalla de Alumno Sobresaliente',
+    category: 'Escolares',
+    description: 'Medalla dorada personalizada con el nombre del alumno y su grupo, ideal para reconocimientos y clausuras escolares.',
+    price: 'Desde $40 MXN',
+    image: '/catalogo/10.jpg',
+  },
+  {
+    id: 11,
+    name: 'Cuadro de tu Jugador Favorito',
+    category: 'Decoración',
+    description: 'Cuadro decorativo con la playera de tu jugador favorito personalizada con tu nombre, enmarcada y lista para colgar.',
+    price: 'Desde $350 MXN',
+    image: '/catalogo/11.jpg',
+  },
+  {
+    id: 12,
+    name: 'Cuadro de tu Jugador Favorito',
+    category: 'Decoración',
+    description: 'El mismo cuadro, con la playera y el jugador que tú elijas, personalizado con tu nombre.',
+    price: 'Desde $350 MXN',
+    image: '/catalogo/12.jpg',
   }
 ];
+
+function ProductThumbnail({
+  src,
+  alt,
+  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw',
+}: {
+  src: string;
+  alt: string;
+  sizes?: string;
+}) {
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute inset-0 bg-linear-to-b from-primary/5 to-primary/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(243,76,145,0.12),rgba(255,255,255,0))]" />
+        <Printer className="w-12 h-12 text-zinc-300 mb-3 group-hover:text-primary transition-colors duration-300 z-10" />
+        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-widest z-10">
+          Visualizar Pieza
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes={sizes}
+      className="object-cover"
+      onError={() => setErrored(true)}
+    />
+  );
+}
 
 export default function Catalogo() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [selectedProduct, setSelectedProduct] = useState<(typeof PLACEHOLDER_PRODUCTS)[number] | null>(null);
 
   const filteredProducts = PLACEHOLDER_PRODUCTS.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
                           product.description.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }).sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedProduct(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [selectedProduct]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+    <div className="flex flex-col min-h-screen min-w-0 bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-900">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-zinc-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="mr-2 text-slate-400 hover:text-white transition-colors">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link href="/" className="mr-1 sm:mr-2 shrink-0 text-zinc-400 hover:text-primary transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-              <Printer className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-              MIMUNDO<span className="text-indigo-400 font-extrabold">3D</span>
-            </span>
+            <Image src="/logo.png" alt="MIMUNDO3D" width={1024} height={161} className="h-6 sm:h-8 w-auto shrink" />
           </div>
-          <nav className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+          <nav className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <Link href="/" className="text-sm font-medium text-zinc-600 hover:text-zinc-950 transition-colors">
               Inicio
             </Link>
-            <Link href="/catalogo" className="text-sm font-medium text-indigo-400 transition-colors">
+            <Link href="/catalogo" className="text-sm font-medium text-primary transition-colors">
               Catálogo
             </Link>
           </nav>
@@ -80,39 +209,39 @@ export default function Catalogo() {
       </header>
 
       {/* Hero Header */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">
         <div className="text-left mb-10">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mb-3">
             Nuestro Catálogo
           </h1>
-          <p className="text-slate-400 max-w-xl">
-            Explora nuestra colección de productos impresos en 3D y soluciones de pago rápido. Calidad y diseño a tu alcance.
+          <p className="text-zinc-600 max-w-xl">
+            Explora nuestra colección de productos impresos en 3D. Calidad y diseño a tu alcance.
           </p>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-slate-900/50 border border-slate-900 rounded-2xl p-5 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="bg-white border border-zinc-200 rounded-2xl p-5 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
           <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input
               type="text"
               placeholder="Buscar producto, material..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar py-1">
-            <SlidersHorizontal className="w-4 h-4 text-slate-400 shrink-0 hidden sm:inline" />
+          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto min-w-0 no-scrollbar py-1">
+            <SlidersHorizontal className="w-4 h-4 text-zinc-400 shrink-0 hidden sm:inline" />
             {CATEGORIES.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedCategory === category
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white hover:border-slate-700'
+                    ? 'bg-primary text-white shadow-md shadow-primary/20'
+                    : 'bg-white text-zinc-500 border border-zinc-200 hover:text-zinc-900 hover:border-zinc-300'
                 }`}
               >
                 {category}
@@ -127,34 +256,26 @@ export default function Catalogo() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-slate-900/20 border border-slate-900 rounded-2xl overflow-hidden hover:border-indigo-500/25 transition-all group flex flex-col h-full"
+                onClick={() => setSelectedProduct(product)}
+                className="bg-white border border-zinc-200/60 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
               >
-                <div className="aspect-square w-full bg-slate-950 relative overflow-hidden flex items-center justify-center text-slate-850">
-                  <div className="absolute inset-0 bg-linear-to-b from-indigo-500/5 to-purple-500/5" />
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]" />
-                  <div className="flex flex-col items-center justify-center p-6 text-center z-10">
-                    <Printer className="w-12 h-12 text-slate-800 mb-3 group-hover:text-indigo-400 transition-colors duration-300" />
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-                      Visualizar Pieza
-                    </span>
-                  </div>
-                  {product.badge && (
-                    <span className="absolute top-3 left-3 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      {product.badge}
-                    </span>
-                  )}
+                <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden">
+                  <ProductThumbnail src={product.image} alt={product.name} />
                 </div>
                 <div className="p-5 flex flex-col flex-grow">
-                  <span className="text-xs text-indigo-450 font-semibold mb-1 uppercase tracking-wider">{product.category}</span>
-                  <h3 className="text-md font-bold text-white mb-2 line-clamp-1 group-hover:text-indigo-300 transition-colors">
+                  <span className="text-xs text-primary font-semibold mb-1 uppercase tracking-wider">{product.category}</span>
+                  <h3 className="text-md font-bold text-zinc-950 mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                     {product.name}
                   </h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-4 flex-grow">
+                  <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed mb-4 flex-grow">
                     {product.description}
                   </p>
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-900">
-                    <span className="text-sm font-extrabold text-white">{product.price}</span>
-                    <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 group/btn">
+                  <div className="flex items-center justify-between pt-3 border-t border-zinc-100">
+                    <span className="text-sm font-extrabold text-zinc-950">{product.price}</span>
+                    <button
+                      onClick={() => setSelectedProduct(product)}
+                      className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1 group/btn cursor-pointer"
+                    >
                       Ver Detalles
                       <span className="transition-transform group-hover/btn:translate-x-0.5">→</span>
                     </button>
@@ -164,16 +285,67 @@ export default function Catalogo() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-slate-900/10 border border-dashed border-slate-900 rounded-2xl">
-            <p className="text-slate-500 text-sm">No se encontraron productos que coincidan con la búsqueda.</p>
+          <div className="text-center py-20 bg-white border border-dashed border-zinc-200 rounded-2xl">
+            <p className="text-zinc-500 text-sm">No se encontraron productos que coincidan con la búsqueda.</p>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-8 text-center text-xs text-slate-500 mt-auto">
+      <footer className="bg-white border-t border-zinc-200 py-8 text-center text-xs text-zinc-500 mt-auto">
         <p>© {new Date().getFullYear()} MIMUNDO3D. Todos los derechos reservados.</p>
       </footer>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="bg-white rounded-2xl overflow-hidden w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              <div className="aspect-square sm:aspect-video w-full bg-zinc-50 relative overflow-hidden">
+                <ProductThumbnail
+                  src={selectedProduct.image}
+                  alt={selectedProduct.name}
+                  sizes="(max-width: 640px) 100vw, 672px"
+                />
+              </div>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-zinc-600 hover:text-zinc-950 shadow-md flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 sm:p-8">
+              <span className="text-xs text-primary font-semibold mb-1 uppercase tracking-wider">
+                {selectedProduct.category}
+              </span>
+              <h2 className="text-2xl font-bold text-zinc-950 mt-1 mb-3">{selectedProduct.name}</h2>
+              <p className="text-sm text-zinc-600 leading-relaxed mb-6">{selectedProduct.description}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t border-zinc-100">
+                <span className="text-2xl font-extrabold text-zinc-950">{selectedProduct.price}</span>
+                <a
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                    `¡Hola, MiMundo3D! 👋 Me interesa este producto: ${selectedProduct.name} (${selectedProduct.category}). ¿Me pueden dar más información?`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+                >
+                  <WhatsAppIcon className="w-4 h-4" />
+                  Pedir por WhatsApp
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
