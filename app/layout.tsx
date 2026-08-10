@@ -16,9 +16,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_TITLE = "MIMUNDO3D - Impresión 3D";
+const SITE_DESCRIPTION = "Materializamos tus ideas: Eventos, Negocios, Hogar y Tecnología.";
+
 export const metadata: Metadata = {
-  title: "MIMUNDO3D - Impresión 3D & Soluciones NFC",
-  description: "Prototipado rápido, impresión 3D personalizada y expositores de pago NFC inteligentes para tu negocio.",
+  metadataBase: new URL("https://www.mimundo3d.com.mx"),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "https://www.mimundo3d.com.mx",
+    siteName: "MIMUNDO3D",
+    images: [{ url: "/logo.png" }],
+    locale: "es_MX",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/logo.png"],
+  },
 };
 
 
