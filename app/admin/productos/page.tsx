@@ -4,6 +4,7 @@ import { Plus, Pencil } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import AdminHeader from '../AdminHeader';
+import ProductThumb from './ProductThumb';
 
 export default async function AdminProductosPage() {
   const supabaseAuth = await createServerSupabaseClient();
@@ -53,12 +54,15 @@ export default async function AdminProductosPage() {
               href={`/admin/productos/${product.id}/editar`}
               className="flex items-center justify-between gap-3 px-4 py-3.5 active:bg-zinc-50"
             >
-              <div className="min-w-0">
-                <p className="font-medium text-zinc-900 truncate">{product.name}</p>
-                <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                  {categoryNameById.get(product.category_id) ?? '—'} · {product.is_starting_price ? 'Desde ' : ''}$
-                  {product.price} MXN
-                </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <ProductThumb src={product.image_url} alt={product.name} size={44} />
+                <div className="min-w-0">
+                  <p className="font-medium text-zinc-900 truncate">{product.name}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5 truncate">
+                    {categoryNameById.get(product.category_id) ?? '—'} · {product.is_starting_price ? 'Desde ' : ''}$
+                    {product.price} MXN
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span
@@ -82,6 +86,7 @@ export default async function AdminProductosPage() {
           <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wider">
               <tr>
+                <th className="px-5 py-3" />
                 <th className="text-left px-5 py-3 font-semibold">Producto</th>
                 <th className="text-left px-5 py-3 font-semibold">Categoría</th>
                 <th className="text-left px-5 py-3 font-semibold">Precio</th>
@@ -92,6 +97,9 @@ export default async function AdminProductosPage() {
             <tbody className="divide-y divide-zinc-100">
               {products.map((product) => (
                 <tr key={product.id} className="hover:bg-zinc-50/60">
+                  <td className="pl-5 py-3">
+                    <ProductThumb src={product.image_url} alt={product.name} size={40} />
+                  </td>
                   <td className="px-5 py-3 font-medium text-zinc-900">{product.name}</td>
                   <td className="px-5 py-3 text-zinc-600">{categoryNameById.get(product.category_id) ?? '—'}</td>
                   <td className="px-5 py-3 text-zinc-600">
@@ -119,7 +127,7 @@ export default async function AdminProductosPage() {
               ))}
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-zinc-500">
+                  <td colSpan={6} className="px-5 py-10 text-center text-zinc-500">
                     Todavía no hay productos.
                   </td>
                 </tr>

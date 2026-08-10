@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Home, LayoutGrid, LayoutDashboard, Package, Tags, LogOut } from 'lucide-react';
+import SubmitButton from '@/components/SubmitButton';
 import { signOutAction } from './actions';
 
 const navIconClass =
@@ -33,13 +34,10 @@ export default function AdminHeader({ email }: { email: string }) {
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm text-zinc-500 hidden md:inline truncate max-w-[200px]">{email}</span>
           <form action={signOutAction}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-all cursor-pointer"
-            >
+            <SubmitButton className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-all cursor-pointer">
               <LogOut className="w-3.5 h-3.5" />
               Cerrar sesión
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import SubmitButton from '@/components/SubmitButton';
+
 interface CategoryFormValues {
   name: string;
   display_order: number;
@@ -49,12 +51,9 @@ export default function CategoryForm({ action, initialValues, error, submitLabel
         <p className="text-xs text-zinc-500 mt-1.5">Controla en qué posición aparece el filtro de categoría en el catálogo.</p>
       </div>
 
-      <button
-        type="submit"
-        className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-      >
+      <SubmitButton className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer">
         {submitLabel}
-      </button>
+      </SubmitButton>
     </form>
   );
 }
