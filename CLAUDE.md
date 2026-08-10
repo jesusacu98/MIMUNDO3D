@@ -26,6 +26,8 @@ Antes de escribir código nuevo, revisar `node_modules/next/dist/docs/` (ver [AG
 
 - **`params` y `searchParams` son `Promise`.** En Server Components / Route Handlers: `const { x } = await params`. En Client Components no se puede usar `await` de nivel superior — usar el hook `use()` de React, como en [app/pago/[client_id]/page.tsx](app/pago/[client_id]/page.tsx).
 - **`'use client'`** es obligatorio en cualquier componente que use hooks (`useState`, `useEffect`, `use`) o APIs del navegador (`navigator.clipboard`).
+- **`middleware.ts` está deprecado, se llama `proxy.ts`** (función exportada `proxy`, no `middleware`). Ver [proxy.ts](proxy.ts).
+- **`cookies()` fuerza renderizado dinámico.** Si un Server Component público (ej. `/`, `/catalogo`) necesita saber si hay sesión, no lo hagas leyendo cookies ahí — rompe el prerender estático/ISR. Usar un Client Component que consulte la sesión (ver [components/AdminNavLink.tsx](components/AdminNavLink.tsx)).
 
 ## Convenciones del proyecto
 
@@ -34,19 +36,28 @@ Antes de escribir código nuevo, revisar `node_modules/next/dist/docs/` (ver [AG
 - El estilado es Tailwind puro por archivo — no hay un design system ni componentes de botón/card compartidos. Si se agregan piezas de UI reutilizables, hacerlo de forma incremental, sin forzar una refactorización general no pedida.
 - El sitio mezcla temas: `/` es claro, `/catalogo` es oscuro, `/pago/[client_id]` es una tarjeta blanca standalone. Esto es intencional/heredado, no un bug — no "corregir" la paleta de una página sin que se pida explícitamente.
 
-## Supabase: dos clientes con privilegios distintos
+## Supabase: varios clientes con privilegios distintos
 
-- `lib/supabaseClient.ts` — anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`), sujeta a RLS, para código de cliente. Actualmente no se usa en ninguna página.
-- `lib/supabaseAdmin.ts` — service role key (`SUPABASE_SERVICE_ROLE_KEY`), bypassa RLS. **Sólo se importa desde Route Handlers** (ver `app/api/pago/[client_id]/route.ts`). Nunca importar este archivo desde un Client Component ni exponer esa clave al navegador.
+- `lib/supabaseClient.ts` — anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`), sujeta a RLS. Usado para lecturas públicas (catálogo en `app/catalogo/page.tsx`, categorías/colores).
+- `lib/supabaseAdmin.ts` — service role key (`SUPABASE_SERVICE_ROLE_KEY`), bypassa RLS. Se usa en Route Handlers (`app/api/pago/[client_id]/route.ts`) **y** en Server Actions/Server Components dentro de `/admin` (ej. `app/admin/productos/actions.ts`), ya que esa área está protegida por `proxy.ts` + verificación de rol en cada página. **Nunca** importar este archivo desde un Client Component ni exponer esa clave al navegador.
+- `lib/supabase/server.ts` y `lib/supabase/browser.ts` — clientes con sesión de auth basada en cookies (`@supabase/ssr`), para el login/rol de `/admin`. `lib/supabase/middleware.ts` es el helper que usa `proxy.ts` para refrescar la sesión en cada request.
 
 Variables de entorno esperadas en `.env.local` (no está en el repo, ver `.gitignore`):
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
 ```
 
-Si se modifica el esquema de las tablas `clients` / `client_bank_accounts` en Supabase, actualizar a mano `lib/database.types.ts` (no se genera automáticamente en este proyecto).
+Si se modifica el esquema de las tablas en Supabase, actualizar a mano `lib/database.types.ts` (no se genera automáticamente en este proyecto). Los `CREATE TABLE`/seeds viven en `supabase/*.sql` (correr manualmente en el SQL Editor de Supabase — no hay CLI/migraciones automatizadas).
+
+## Auth y admin (`/admin`)
+
+- Login con Supabase Auth (`/admin/login`), rol en la tabla `user_roles` (`'user'` | `'admin'`). Sólo `'admin'` puede entrar a `/admin/*`.
+- `proxy.ts` (raíz) protege las rutas — en esta versión de Next.js el archivo se llama `proxy.ts`/`export function proxy()`, **no** `middleware.ts` (deprecado, ver §"Reglas críticas").
+- Cada página bajo `/admin` además re-verifica sesión+rol server-side (defensa en profundidad, no depender sólo del proxy).
+- No hay registro público: los usuarios admin se crean directo en Supabase (ver `supabase/seed_admin.sql`).
 
 ## Datos sensibles
 
@@ -54,6 +65,7 @@ Si se modifica el esquema de las tablas `clients` / `client_bank_accounts` en Su
 
 ## Cosas a tener presentes al tocar código existente
 
-- `app/catalogo/page.tsx` usa un array hardcodeado (`PLACEHOLDER_PRODUCTS`), no consulta Supabase — no asumir que hay una tabla `products`.
+- `app/catalogo/page.tsx` (Server Component, ISR `revalidate = 60`) consulta `products`/`product_categories`/`product_colors` en Supabase y pasa los datos a `app/catalogo/CatalogoClient.tsx` (interactividad). Las escrituras desde `/admin` deben llamar `revalidatePath('/catalogo')` para no esperar los 60s.
+- Las imágenes de producto son archivos estáticos en `public/catalogo/`, subidos al repo y deployados — no hay upload de archivos en el admin. El campo `image_url` sólo guarda la ruta (ej. `/catalogo/21.jpg`).
 - `app/api/hello/route.ts` es un endpoint de ejemplo del scaffolding inicial (tiene un TODO sin resolver) y no lo consume ninguna página.
 - `/pago/[client_id]/page.tsx` es Client Component y hace `fetch` a su propia API en vez de resolver los datos en el servidor; es una decisión existente, no cambiarla salvo que se pida explícitamente optimizar esa ruta.

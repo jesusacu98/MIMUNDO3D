@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin } from "lucide-react";
 import TrackedLink from "@/components/TrackedLink";
+import AdminNavLink from "@/components/AdminNavLink";
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -55,6 +56,7 @@ export default function Home() {
             >
               Catálogo
             </Link>
+            <AdminNavLink className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors" />
           </nav>
         </div>
       </header>

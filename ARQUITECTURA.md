@@ -34,7 +34,8 @@ app/
   page.tsx                   Landing page ("/") — contenido estático
   globals.css                Import de Tailwind + tema claro/oscuro por CSS vars
   catalogo/
-    page.tsx                 Catálogo ("/catalogo") — Client Component, datos hardcodeados
+    page.tsx                 Catálogo ("/catalogo") — Server Component async, consulta Supabase (anon key) con ISR (revalidate = 60s)
+    CatalogoClient.tsx        Client Component: búsqueda, filtro, modal de producto y footer; recibe productos/categorías/colores como props
   pago/[client_id]/
     page.tsx                 Página de pago NFC — Client Component, fetch a la API propia
   api/
@@ -42,14 +43,19 @@ app/
     pago/[client_id]/route.ts  Endpoint real: consulta Supabase con la service role key
 components/
   PaymentCard.tsx             Tarjeta de datos bancarios + copiado al portapapeles
+  TrackedLink.tsx              Wrapper de `<a>` que dispara eventos de GA4 al hacer click (usado en los footers)
 lib/
-  supabaseClient.ts           Cliente Supabase con anon key (público) — actualmente sin uso en app/
+  supabaseClient.ts           Cliente Supabase con anon key (público) — usado por `/catalogo` (lectura pública vía RLS)
   supabaseAdmin.ts             Cliente Supabase con service role key (server-only, bypass RLS)
   database.types.ts            Tipado manual de las tablas de Supabase
+  gtag.ts                       Helpers tipados para Google Analytics 4 (`pageview`, `event`)
 scripts/
   seed.js                       Inserta/actualiza un cliente y cuenta de prueba (ID "1")
   test-query.js                 Query de prueba usando la anon key
   test-query-admin.js           Query de prueba usando la service role key
+supabase/
+  schema_catalog.sql            DDL de `product_categories` / `products` / `product_colors` + RLS
+  seed_catalog.sql              Seed del catálogo (categorías, colores, productos)
 ```
 
 ## 4. Mapa de rutas y su naturaleza
@@ -57,7 +63,7 @@ scripts/
 | Ruta | Tipo | Descripción |
 |---|---|---|
 | `/` | Server Component (estático) | Landing: hero, servicios (FDM/SLA/NFC/Modelado), footer. Tema **claro** (`bg-zinc-50`). |
-| `/catalogo` | Client Component (`'use client'`) | Grid de productos con búsqueda y filtro por categoría, 100% en memoria sobre un array `PLACEHOLDER_PRODUCTS` hardcodeado en el propio archivo. **No consulta Supabase todavía.** Tema **oscuro** (`bg-slate-950`). |
+| `/catalogo` | Server Component async (`page.tsx`) + Client Component (`CatalogoClient.tsx`) | El Server Component consulta `product_categories`/`product_colors`/`products` en Supabase con el cliente anon (RLS de lectura pública) y pasa los datos como props al Client Component, que maneja búsqueda, filtro por categoría y el modal de producto. ISR con `revalidate = 60`. Tema **oscuro** (`bg-slate-950`). |
 | `/pago/[client_id]` | Client Component (`'use client'`) | Lee `client_id` de `params` (Promise, ver §6), hace `fetch('/api/pago/${client_id}')` desde el navegador y renderiza `<PaymentCard>` o un estado de error/carga. |
 | `/api/hello` | Route Handler | Endpoint de ejemplo dejado por el scaffolding inicial, con un comentario TODO (`//Crear api para obtener los dato de la bd`). No lo consume ninguna página. Candidato a eliminar. |
 | `/api/pago/[client_id]` | Route Handler | Único endpoint real de datos. Usa `supabaseAdmin` (service role key) para hacer join `clients` + `client_bank_accounts` y devuelve `{ clientName, bankAccount }` o 404/400/500. |
@@ -67,6 +73,26 @@ scripts/
 A pesar de que Next.js/Supabase permitirían resolver los datos directamente en el servidor (Server Component + `supabaseAdmin`), la página actual es un Client Component que hace `fetch` a su propia API Route. Esto añade un round-trip extra (carga → loading spinner → fetch → render) en vez de renderizar los datos ya resueltos en el primer HTML. Es una decisión de implementación existente, no un requisito de la plataforma — si se busca reducir el tiempo a contenido visible en dispositivos NFC (que priorizan velocidad), convertir esta ruta a Server Component async es la optimización más directa disponible.
 
 ## 5. Modelo de datos (Supabase)
+
+### Catálogo
+
+Tres tablas (ver `supabase/schema_catalog.sql`):
+
+**`product_categories`**
+- `id` (uuid, PK), `name` (unique), `display_order`, `created_at`, `updated_at`
+
+**`product_colors`**
+- Paleta global de colores ofrecida en todos los productos (no hay restricción por producto todavía).
+- `id` (uuid, PK), `name` (unique), `hex_code`, `display_order`, `created_at`
+
+**`products`**
+- `id` (uuid, PK), `category_id` (FK → `product_categories.id`)
+- `price` (numeric, sin símbolo "$" ni texto — el frontend lo formatea) + `is_starting_price` (boolean: `true` = "Desde $X MXN", `false` = precio fijo "$X MXN")
+- `is_personalizable` / `has_business_info` / `has_character_option` — controlan qué campos del formulario se muestran en el modal de producto
+- `is_active` (soft-hide sin borrar) y `display_order` (orden manual)
+- Lectura pública vía RLS (`is_active = true`); sólo `supabaseAdmin` puede escribir.
+
+### Pago NFC
 
 Dos tablas, relación 1→N:
 
@@ -101,7 +127,7 @@ Antes de tocar cualquier ruta dinámica nueva, seguir el mismo patrón. Ver tamb
 
 Hay dos clientes Supabase con privilegios muy distintos:
 
-- **`lib/supabaseClient.ts`** — usa `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Pensado para código de cliente, sujeto a las políticas RLS de Supabase. **Actualmente no se usa en ninguna página ni componente**, sólo existe como utilidad disponible (los scripts en `scripts/` crean su propio cliente inline en vez de importarlo).
+- **`lib/supabaseClient.ts`** — usa `NEXT_PUBLIC_SUPABASE_ANON_KEY`, sujeto a las políticas RLS de Supabase. Usado en `app/catalogo/page.tsx` (Server Component) para leer `product_categories`/`product_colors`/`products`; la lectura pública está habilitada vía RLS porque es contenido de marketing sin datos sensibles.
 - **`lib/supabaseAdmin.ts`** — usa `SUPABASE_SERVICE_ROLE_KEY`. Bypassa RLS por completo. Se usa **únicamente** en `app/api/pago/[client_id]/route.ts`, que corre en el servidor. **Nunca debe importarse desde un Client Component ni exponerse al navegador.**
 
 Puntos a vigilar:
@@ -114,7 +140,9 @@ Puntos a vigilar:
 
 ## 8. Estado del catálogo (`/catalogo`)
 
-Los productos mostrados son un array estático (`PLACEHOLDER_PRODUCTS`) dentro de `app/catalogo/page.tsx`, no vienen de Supabase ni de ningún CMS. No existe todavía una tabla `products` en el esquema de datos. Si se decide conectar el catálogo a datos reales, es la pieza más grande de trabajo pendiente identificada en el proyecto.
+Los productos vienen de Supabase (`product_categories`, `product_colors`, `products`, ver §5). `app/catalogo/page.tsx` es un Server Component async que consulta con el cliente anon y pasa los datos a `CatalogoClient.tsx` (interactividad). ISR con `revalidate = 60` segundos, para que las ediciones de un futuro panel de admin se reflejen sin necesidad de un nuevo deploy.
+
+Pendiente: panel de administración para gestionar productos/categorías/colores sin tocar código ni SQL directamente (siguiente pieza de trabajo identificada).
 
 ## 9. Consistencia visual (estado actual, no aspiracional)
 
