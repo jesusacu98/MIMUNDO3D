@@ -14,6 +14,7 @@ interface ProductFormValues {
   category_id: string;
   description: string;
   price: number;
+  cost: number | null;
   is_starting_price: boolean;
   image_url: string;
   is_personalizable: boolean;
@@ -255,6 +256,25 @@ export default function ProductForm({ categories, action, initialValues, error, 
             className={inputClass}
           />
         </div>
+      </div>
+
+      <div>
+        <label htmlFor="cost" className={labelClass}>
+          Costo de fabricación (MXN)
+        </label>
+        <input
+          id="cost"
+          name="cost"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="Sin definir"
+          defaultValue={initialValues?.cost ?? undefined}
+          className={inputClass}
+        />
+        <p className="text-xs text-zinc-500 mt-1.5">
+          Sólo visible aquí en el admin — no se muestra en el catálogo público. Se usa para calcular el costo automático de los pedidos.
+        </p>
       </div>
 
       <div className="space-y-3 pt-2 border-t border-zinc-100">

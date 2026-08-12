@@ -49,6 +49,7 @@ export default async function NuevoProductoPage({ searchParams }: PageProps) {
             category_id: '',
             description: '',
             price: 0,
+            cost: null,
             is_starting_price: true,
             image_url: '',
             is_personalizable: false,

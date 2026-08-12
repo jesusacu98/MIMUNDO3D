@@ -53,6 +53,7 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
             category_id: product.category_id,
             description: product.description,
             price: product.price,
+            cost: product.cost,
             is_starting_price: product.is_starting_price,
             image_url: product.image_url,
             is_personalizable: product.is_personalizable,

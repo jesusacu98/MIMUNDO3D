@@ -77,6 +77,8 @@ export interface Database {
           name: string;
           description: string;
           price: number;
+          // Costo de fabricación, admin-only — el catálogo público nunca lo selecciona.
+          cost: number | null;
           is_starting_price: boolean;
           image_url: string;
           is_personalizable: boolean;
@@ -93,6 +95,7 @@ export interface Database {
           name: string;
           description: string;
           price: number;
+          cost?: number | null;
           is_starting_price?: boolean;
           image_url: string;
           is_personalizable?: boolean;
@@ -109,6 +112,7 @@ export interface Database {
           name?: string;
           description?: string;
           price?: number;
+          cost?: number | null;
           is_starting_price?: boolean;
           image_url?: string;
           is_personalizable?: boolean;
@@ -170,6 +174,106 @@ export interface Database {
           card_number?: string | null;
           interbank_clabe?: string;
           account_holder_name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      orders: {
+        Row: {
+          id: string;
+          order_date: string | null;
+          client_name: string;
+          payment_status: string | null;
+          payment_method: string | null;
+          order_status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_date?: string | null;
+          client_name: string;
+          payment_status?: string | null;
+          payment_method?: string | null;
+          order_status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_date?: string | null;
+          client_name?: string;
+          payment_status?: string | null;
+          payment_method?: string | null;
+          order_status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          // Vínculo opcional a products.id — nulo en líneas personalizadas/fuera de catálogo.
+          product_id: string | null;
+          product_name: string;
+          quantity: number;
+          sale_price: number | null;
+          cost: number | null;
+          makerworld_link: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          product_id?: string | null;
+          product_name: string;
+          quantity?: number;
+          sale_price?: number | null;
+          cost?: number | null;
+          makerworld_link?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          product_id?: string | null;
+          product_name?: string;
+          quantity?: number;
+          sale_price?: number | null;
+          cost?: number | null;
+          makerworld_link?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      investments: {
+        Row: {
+          id: string;
+          expense_date: string | null;
+          description: string;
+          cost: number;
+          paid_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          expense_date?: string | null;
+          description: string;
+          cost: number;
+          paid_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          expense_date?: string | null;
+          description?: string;
+          cost?: number;
+          paid_by?: string;
           created_at?: string;
           updated_at?: string;
         };

@@ -28,6 +28,8 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
   const description = String(formData.get('description') || '').trim();
   const priceRaw = String(formData.get('price') || '').trim();
   const price = Number(priceRaw);
+  const costRaw = String(formData.get('cost') || '').trim();
+  const cost = costRaw ? Number(costRaw) : null;
   const displayOrderRaw = String(formData.get('display_order') || '').trim();
   const displayOrder = displayOrderRaw ? Number(displayOrderRaw) : 0;
 
@@ -36,6 +38,9 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
   }
   if (!Number.isFinite(price) || price < 0) {
     return { error: 'El precio debe ser un número válido mayor o igual a 0.' };
+  }
+  if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
+    return { error: 'El costo de fabricación debe ser un número válido mayor o igual a 0.' };
   }
   if (!Number.isFinite(displayOrder)) {
     return { error: 'El orden debe ser un número válido.' };
@@ -53,6 +58,7 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
       description,
       image_url: imageResult.url,
       price,
+      cost,
       display_order: displayOrder,
       is_starting_price: formData.get('is_starting_price') === 'on',
       is_personalizable: formData.get('is_personalizable') === 'on',

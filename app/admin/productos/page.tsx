@@ -6,6 +6,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import AdminHeader from '../AdminHeader';
 import ProductThumb from './ProductThumb';
 
+const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
 export default async function AdminProductosPage() {
   const supabaseAuth = await createServerSupabaseClient();
   const {
@@ -20,7 +22,7 @@ export default async function AdminProductosPage() {
     supabaseAdmin.from('product_categories').select('id, name').order('display_order', { ascending: true }),
     supabaseAdmin
       .from('products')
-      .select('id, category_id, name, price, is_starting_price, image_url, is_active, display_order')
+      .select('id, category_id, name, price, cost, is_starting_price, image_url, is_active, display_order')
       .order('display_order', { ascending: true }),
   ]);
 
@@ -61,6 +63,7 @@ export default async function AdminProductosPage() {
                   <p className="text-xs text-zinc-500 mt-0.5 truncate">
                     {categoryNameById.get(product.category_id) ?? '—'} · {product.is_starting_price ? 'Desde ' : ''}$
                     {product.price} MXN
+                    {product.cost != null && ` · Costo ${currency.format(product.cost)}`}
                   </p>
                 </div>
               </div>
@@ -90,6 +93,7 @@ export default async function AdminProductosPage() {
                 <th className="text-left px-5 py-3 font-semibold">Producto</th>
                 <th className="text-left px-5 py-3 font-semibold">Categoría</th>
                 <th className="text-left px-5 py-3 font-semibold">Precio</th>
+                <th className="text-left px-5 py-3 font-semibold">Costo</th>
                 <th className="text-left px-5 py-3 font-semibold">Estado</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -105,6 +109,7 @@ export default async function AdminProductosPage() {
                   <td className="px-5 py-3 text-zinc-600">
                     {product.is_starting_price ? 'Desde ' : ''}${product.price} MXN
                   </td>
+                  <td className="px-5 py-3 text-zinc-600">{product.cost != null ? currency.format(product.cost) : '—'}</td>
                   <td className="px-5 py-3">
                     <span
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -127,7 +132,7 @@ export default async function AdminProductosPage() {
               ))}
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="px-5 py-10 text-center text-zinc-500">
                     Todavía no hay productos.
                   </td>
                 </tr>
