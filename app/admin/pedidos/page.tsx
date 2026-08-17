@@ -16,6 +16,7 @@ const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: '
 const orderStatusClass: Record<string, string> = {
   Entregado: 'bg-emerald-50 text-emerald-700',
   Imprimiendo: 'bg-blue-50 text-blue-700',
+  'Pendiente Imprimir': 'bg-amber-50 text-amber-700',
   'Pendiente Cotizar': 'bg-zinc-100 text-zinc-500',
   Cancelado: 'bg-red-50 text-red-600',
 };

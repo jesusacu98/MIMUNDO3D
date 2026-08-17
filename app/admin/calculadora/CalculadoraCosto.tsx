@@ -59,12 +59,17 @@ export default function CalculadoraCosto() {
   const [printerWattageKw, setPrinterWattageKw] = useState(0.1);
   const [electricityCostPerKwh, setElectricityCostPerKwh] = useState(2);
   const [printHours, setPrintHours] = useState(0);
+  const [machinePurchaseCost, setMachinePurchaseCost] = useState(12000);
+  const [maintenanceFund, setMaintenanceFund] = useState(2000);
+  const [lifetimeHours, setLifetimeHours] = useState(5000);
   const [profitMargin, setProfitMargin] = useState(2);
 
   const filamentCost = (filamentPricePerKg * gramsUsed) / 1000;
   const hourlyElectricityCost = printerWattageKw * electricityCostPerKwh;
   const energyCost = hourlyElectricityCost * printHours;
-  const totalCost = filamentCost + energyCost;
+  const hourlyMachineCost = lifetimeHours > 0 ? (machinePurchaseCost + maintenanceFund) / lifetimeHours : 0;
+  const machineWearCost = hourlyMachineCost * printHours;
+  const totalCost = filamentCost + energyCost + machineWearCost;
   const salePrice = totalCost * profitMargin;
   const profit = salePrice - totalCost;
 
@@ -106,6 +111,38 @@ export default function CalculadoraCosto() {
           />
         </div>
 
+        <div className="pt-2 border-t border-zinc-100 space-y-4">
+          <div>
+            <p className={labelClass}>Desgaste de la máquina</p>
+            <p className="text-xs text-zinc-500 mt-1.5">
+              Amortización + fondo de mantenimiento (boquillas, correas, rodamientos, placas PEI, etc.), repartido entre las horas de vida útil
+              estimadas de la impresora.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <NumberField
+              id="machinePurchaseCost"
+              label="Costo de la máquina"
+              value={machinePurchaseCost}
+              onChange={setMachinePurchaseCost}
+            />
+            <NumberField
+              id="maintenanceFund"
+              label="Fondo de mantenimiento"
+              value={maintenanceFund}
+              onChange={setMaintenanceFund}
+            />
+          </div>
+          <NumberField
+            id="lifetimeHours"
+            label="Horas de vida útil estimadas"
+            hint={`Ajustable según tu impresora. Con estos valores: ${currency.format(hourlyMachineCost)}/hora de desgaste.`}
+            step="1"
+            value={lifetimeHours}
+            onChange={setLifetimeHours}
+          />
+        </div>
+
         <div className="pt-2 border-t border-zinc-100">
           <NumberField
             id="profitMargin"
@@ -120,6 +157,7 @@ export default function CalculadoraCosto() {
       <div className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-4">
         <ResultRow label="Costo filamento" value={filamentCost} />
         <ResultRow label="Costo energético" value={energyCost} />
+        <ResultRow label="Desgaste de máquina" value={machineWearCost} />
         <div className="border-t border-zinc-100 pt-4">
           <ResultRow label="Costo total de impresión" value={totalCost} />
         </div>

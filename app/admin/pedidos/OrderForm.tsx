@@ -195,12 +195,12 @@ export default function OrderForm({ action, products, initialValues, error, subm
               <label className={labelClass}>
                 Descripción <span className="text-primary">*</span>
               </label>
-              <input
-                type="text"
+              <textarea
                 required
+                rows={2}
                 value={item.productName}
                 onChange={(e) => updateItem(item.key, { productName: e.target.value })}
-                className={inputClass}
+                className={`${inputClass} resize-y`}
               />
             </div>
 
@@ -271,6 +271,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
           <select id="payment_status" name="payment_status" defaultValue={initialValues?.payment_status ?? ''} className={inputClass}>
             <option value="">Sin definir</option>
             <option value="Pagado">Pagado</option>
+            <option value="Anticipo">Anticipo</option>
             <option value="Pendiente">Pendiente</option>
           </select>
         </div>
@@ -309,6 +310,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
           className={inputClass}
         >
           <option value="Pendiente Cotizar">Pendiente Cotizar</option>
+          <option value="Pendiente Imprimir">Pendiente Imprimir</option>
           <option value="Imprimiendo">Imprimiendo</option>
           <option value="Entregado">Entregado</option>
           <option value="Cancelado">Cancelado</option>
