@@ -186,6 +186,9 @@ export interface Database {
           client_name: string;
           payment_status: string | null;
           payment_method: string | null;
+          advance_amount: number | null;
+          // Link o número del chat de WhatsApp/Meta Business del pedido.
+          whatsapp_link: string | null;
           order_status: string;
           created_at: string;
           updated_at: string;
@@ -196,6 +199,8 @@ export interface Database {
           client_name: string;
           payment_status?: string | null;
           payment_method?: string | null;
+          advance_amount?: number | null;
+          whatsapp_link?: string | null;
           order_status?: string;
           created_at?: string;
           updated_at?: string;
@@ -206,6 +211,8 @@ export interface Database {
           client_name?: string;
           payment_status?: string | null;
           payment_method?: string | null;
+          advance_amount?: number | null;
+          whatsapp_link?: string | null;
           order_status?: string;
           created_at?: string;
           updated_at?: string;

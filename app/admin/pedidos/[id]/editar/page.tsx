@@ -27,7 +27,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
   const [{ data: order }, { data: orderItemsData }, { data: productsData }] = await Promise.all([
     supabaseAdmin
       .from('orders')
-      .select('id, order_date, client_name, payment_status, payment_method, order_status')
+      .select('id, order_date, client_name, payment_status, payment_method, advance_amount, whatsapp_link, order_status')
       .eq('id', id)
       .maybeSingle(),
     supabaseAdmin
@@ -70,6 +70,8 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
             client_name: order.client_name,
             payment_status: order.payment_status ?? '',
             payment_method: order.payment_method ?? '',
+            advance_amount: order.advance_amount != null ? String(order.advance_amount) : '',
+            whatsapp_link: order.whatsapp_link ?? '',
             order_status: order.order_status,
             items: items.length > 0 ? items : [{ product_id: '', product_name: '', quantity: '1', sale_price: '', cost: '', makerworld_link: '' }],
           }}

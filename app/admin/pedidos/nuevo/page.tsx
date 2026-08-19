@@ -10,6 +10,17 @@ interface PageProps {
   searchParams: Promise<{ error?: string }>;
 }
 
+// Servidor corre en UTC (Vercel); calculamos "hoy" en la zona horaria del
+// negocio para no desfasarnos un día cerca de la medianoche.
+function todayInMazatlan() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mazatlan',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 export default async function NuevoPedidoPage({ searchParams }: PageProps) {
   const { error } = await searchParams;
 
@@ -42,10 +53,12 @@ export default async function NuevoPedidoPage({ searchParams }: PageProps) {
           error={error}
           submitLabel="Crear pedido"
           initialValues={{
-            order_date: '',
+            order_date: todayInMazatlan(),
             client_name: '',
             payment_status: '',
             payment_method: '',
+            advance_amount: '',
+            whatsapp_link: '',
             order_status: 'Pendiente Cotizar',
             items: [{ product_id: '', product_name: '', quantity: '1', sale_price: '', cost: '', makerworld_link: '' }],
           }}

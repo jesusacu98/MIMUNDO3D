@@ -19,6 +19,8 @@ interface OrderFormValues {
   client_name: string;
   payment_status: string;
   payment_method: string;
+  advance_amount: string;
+  whatsapp_link: string;
   order_status: string;
   items: OrderItemValue[];
 }
@@ -67,6 +69,8 @@ export default function OrderForm({ action, products, initialValues, error, subm
     const source = initialValues?.items?.length ? initialValues.items : [undefined];
     return source.map((v) => toItemState(v, products));
   });
+  const [paymentStatus, setPaymentStatus] = useState(initialValues?.payment_status ?? '');
+  const [advanceAmount, setAdvanceAmount] = useState(initialValues?.advance_amount ?? '');
 
   const updateItem = (key: string, patch: Partial<ItemState>) => {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
@@ -197,7 +201,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
               </label>
               <textarea
                 required
-                rows={2}
+                rows={5}
                 value={item.productName}
                 onChange={(e) => updateItem(item.key, { productName: e.target.value })}
                 className={`${inputClass} resize-y`}
@@ -260,7 +264,22 @@ export default function OrderForm({ action, products, initialValues, error, subm
         <span className="text-zinc-500 font-medium">Total del pedido</span>
         <span className="font-bold text-zinc-900">
           Venta {currency.format(totalSale)} · Costo {currency.format(totalCost)} · Ganancia {currency.format(totalSale - totalCost)}
+          {Number(advanceAmount) > 0 && <> · Saldo pendiente {currency.format(totalSale - Number(advanceAmount))}</>}
         </span>
+      </div>
+
+      <div>
+        <label htmlFor="whatsapp_link" className={labelClass}>
+          Chat de WhatsApp / Meta Business
+        </label>
+        <input
+          id="whatsapp_link"
+          name="whatsapp_link"
+          type="text"
+          placeholder="https://wa.me/... o número de teléfono"
+          defaultValue={initialValues?.whatsapp_link}
+          className={inputClass}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-zinc-100">
@@ -268,12 +287,35 @@ export default function OrderForm({ action, products, initialValues, error, subm
           <label htmlFor="payment_status" className={labelClass}>
             Estatus de pago
           </label>
-          <select id="payment_status" name="payment_status" defaultValue={initialValues?.payment_status ?? ''} className={inputClass}>
+          <select
+            id="payment_status"
+            name="payment_status"
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            className={inputClass}
+          >
             <option value="">Sin definir</option>
             <option value="Pagado">Pagado</option>
             <option value="Anticipo">Anticipo</option>
             <option value="Pendiente">Pendiente</option>
           </select>
+          {paymentStatus === 'Anticipo' && (
+            <div className="mt-3">
+              <label htmlFor="advance_amount" className={labelClass}>
+                Monto del anticipo (MXN)
+              </label>
+              <input
+                id="advance_amount"
+                name="advance_amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
         </div>
         <div>
           <label htmlFor="payment_method" className={labelClass}>

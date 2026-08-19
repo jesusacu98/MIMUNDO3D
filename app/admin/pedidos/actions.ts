@@ -18,6 +18,8 @@ function parseOrderForm(formData: FormData): { values: OrderInsert } | { error: 
   const orderDateRaw = String(formData.get('order_date') || '').trim();
   const paymentStatusRaw = String(formData.get('payment_status') || '').trim();
   const paymentMethod = String(formData.get('payment_method') || '').trim();
+  const advanceAmountRaw = String(formData.get('advance_amount') || '').trim();
+  const whatsappLink = String(formData.get('whatsapp_link') || '').trim();
   const orderStatus = String(formData.get('order_status') || '').trim();
 
   if (!clientName) {
@@ -30,12 +32,19 @@ function parseOrderForm(formData: FormData): { values: OrderInsert } | { error: 
     return { error: 'Estatus de pago inválido.' };
   }
 
+  const advanceAmount = advanceAmountRaw ? Number(advanceAmountRaw) : null;
+  if (advanceAmount !== null && (!Number.isFinite(advanceAmount) || advanceAmount < 0)) {
+    return { error: 'El anticipo debe ser un número válido mayor o igual a 0.' };
+  }
+
   return {
     values: {
       order_date: orderDateRaw || null,
       client_name: clientName,
       payment_status: paymentStatusRaw || null,
       payment_method: paymentMethod || null,
+      advance_amount: advanceAmount,
+      whatsapp_link: whatsappLink || null,
       order_status: orderStatus,
     },
   };
