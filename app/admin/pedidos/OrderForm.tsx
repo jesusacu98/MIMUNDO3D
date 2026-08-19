@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
+import { ORDER_STATUSES, PAYMENT_STATUSES } from '@/lib/orderStatuses';
 import ProductPicker, { type PickerProduct } from './ProductPicker';
 
 export interface OrderItemValue {
@@ -295,9 +296,11 @@ export default function OrderForm({ action, products, initialValues, error, subm
             className={inputClass}
           >
             <option value="">Sin definir</option>
-            <option value="Pagado">Pagado</option>
-            <option value="Anticipo">Anticipo</option>
-            <option value="Pendiente">Pendiente</option>
+            {PAYMENT_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
           </select>
           {paymentStatus === 'Anticipo' && (
             <div className="mt-3">
@@ -351,12 +354,11 @@ export default function OrderForm({ action, products, initialValues, error, subm
           defaultValue={initialValues?.order_status ?? 'Pendiente Cotizar'}
           className={inputClass}
         >
-          <option value="Pendiente Cotizar">Pendiente Cotizar</option>
-          <option value="Pendiente Imprimir">Pendiente Imprimir</option>
-          <option value="Imprimiendo">Imprimiendo</option>
-          <option value="Impreso">Impreso</option>
-          <option value="Entregado">Entregado</option>
-          <option value="Cancelado">Cancelado</option>
+          {ORDER_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
         </select>
       </div>
 
