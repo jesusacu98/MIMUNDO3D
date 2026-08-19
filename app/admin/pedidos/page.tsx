@@ -146,6 +146,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
                 </p>
                 <p className="text-xs text-zinc-500 mt-0.5 truncate">
                   {formatDate(order.order_date)} · {currency.format(order.salePrice)} · Ganancia {currency.format(order.profit)}
+                  {order.advance_amount != null && ` · Anticipo ${currency.format(order.advance_amount)}`}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -175,6 +176,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
                 <th className="text-left px-5 py-3 font-semibold">Costo</th>
                 <th className="text-left px-5 py-3 font-semibold">Ganancia</th>
                 <th className="text-left px-5 py-3 font-semibold">Pago</th>
+                <th className="text-left px-5 py-3 font-semibold">Anticipo</th>
                 <th className="text-left px-5 py-3 font-semibold">Estado</th>
                 <th className="px-5 py-3" />
                 <th className="px-5 py-3" />
@@ -192,6 +194,9 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
                     {currency.format(order.profit)}
                   </td>
                   <td className="px-5 py-3 text-zinc-600 whitespace-nowrap">{order.payment_status ?? '—'}</td>
+                  <td className="px-5 py-3 text-zinc-600 whitespace-nowrap">
+                    {order.advance_amount != null ? currency.format(order.advance_amount) : '—'}
+                  </td>
                   <td className="px-5 py-3">
                     <span
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
@@ -217,7 +222,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-5 py-10 text-center text-zinc-500">
+                  <td colSpan={11} className="px-5 py-10 text-center text-zinc-500">
                     Todavía no hay pedidos.
                   </td>
                 </tr>
