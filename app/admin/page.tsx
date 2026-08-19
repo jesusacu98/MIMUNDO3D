@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Package, Tags, Calculator, ClipboardList, PiggyBank } from 'lucide-react';
+import { Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -94,6 +94,17 @@ export default async function AdminPage() {
             </div>
             <p className="text-sm font-bold text-zinc-950">Calculadora de costos</p>
             <p className="text-sm text-zinc-500">precio de venta sugerido →</p>
+          </Link>
+
+          <Link
+            href="/admin/qr"
+            className="block bg-white border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all"
+          >
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <QrCode className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-bold text-zinc-950">Generador de QR</p>
+            <p className="text-sm text-zinc-500">crea y descarga códigos QR →</p>
           </Link>
 
           <Link
