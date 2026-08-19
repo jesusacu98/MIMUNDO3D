@@ -10,7 +10,7 @@ type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 type OrderItemInsert = Database['public']['Tables']['order_items']['Insert'];
 type ParsedItem = Omit<OrderItemInsert, 'order_id'>;
 
-const ORDER_STATUSES = ['Pendiente Cotizar', 'Pendiente Imprimir', 'Imprimiendo', 'Entregado', 'Cancelado'];
+const ORDER_STATUSES = ['Pendiente Cotizar', 'Pendiente Imprimir', 'Imprimiendo', 'Impreso', 'Entregado', 'Cancelado'];
 const PAYMENT_STATUSES = ['Pagado', 'Anticipo', 'Pendiente'];
 
 function parseOrderForm(formData: FormData): { values: OrderInsert } | { error: string } {

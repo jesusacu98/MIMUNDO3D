@@ -354,6 +354,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
           <option value="Pendiente Cotizar">Pendiente Cotizar</option>
           <option value="Pendiente Imprimir">Pendiente Imprimir</option>
           <option value="Imprimiendo">Imprimiendo</option>
+          <option value="Impreso">Impreso</option>
           <option value="Entregado">Entregado</option>
           <option value="Cancelado">Cancelado</option>
         </select>
