@@ -3,9 +3,11 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 interface ClientData {
   name: string;
+  logo_url: string | null;
+  brand_color: string | null;
   client_bank_accounts: {
     bank_name: string;
-    interbank_clabe: string;
+    interbank_clabe: string | null;
     account_holder_name: string;
     card_number: string | null;
   }[];
@@ -30,6 +32,8 @@ export async function GET(
       .from("clients")
       .select(`
         name,
+        logo_url,
+        brand_color,
         client_bank_accounts (
           bank_name,
           interbank_clabe,
@@ -37,7 +41,7 @@ export async function GET(
           card_number
         )
       `)
-      .eq("id", client_id)
+      .eq("id", Number(client_id))
       .single() as any);
 
     const clientData = data as ClientData | null;
@@ -53,6 +57,8 @@ export async function GET(
 
     return NextResponse.json({
       clientName: clientData.name,
+      logoUrl: clientData.logo_url,
+      brandColor: clientData.brand_color,
       bankAccount: {
         bank_name: bankAccount.bank_name,
         interbank_clabe: bankAccount.interbank_clabe,

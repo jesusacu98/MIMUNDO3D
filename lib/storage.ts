@@ -62,3 +62,37 @@ export async function deleteCatalogImageIfManaged(imageUrl: string | null | unde
 
   await supabaseAdmin.storage.from(CATALOG_BUCKET).remove([objectPath]);
 }
+
+// Logos de negocio de clientes NFC: mismo bucket público que el catálogo,
+// bajo su propia carpeta para no mezclarse con imágenes de producto.
+const CLIENT_LOGO_PREFIX = 'logos/';
+
+export async function uploadClientLogo(file: File): Promise<{ url: string } | { error: string }> {
+  if (!file.type.startsWith('image/')) {
+    return { error: 'El logo debe ser una imagen.' };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { error: 'El logo no puede pesar más de 10MB.' };
+  }
+
+  const objectPath = CLIENT_LOGO_PREFIX + slugifyFileName(file.name);
+
+  const { error } = await supabaseAdmin.storage.from(CATALOG_BUCKET).upload(objectPath, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    return { error: 'No se pudo subir el logo: ' + error.message };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(CATALOG_BUCKET).getPublicUrl(objectPath);
+
+  return { url: publicUrl };
+}
+
+export async function deleteClientLogoIfManaged(logoUrl: string | null | undefined): Promise<void> {
+  await deleteCatalogImageIfManaged(logoUrl);
+}

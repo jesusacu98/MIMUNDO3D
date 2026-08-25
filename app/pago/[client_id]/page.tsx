@@ -18,6 +18,8 @@ interface BankAccount {
 
 interface PaymentData {
   clientName: string;
+  logoUrl: string | null;
+  brandColor: string | null;
   bankAccount: BankAccount;
 }
 
@@ -90,7 +92,7 @@ export default function PagoPage({ params }: PageProps) {
   // Success State
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-12 dark:bg-zinc-950">
-      <PaymentCard clientName={data.clientName} bankAccount={data.bankAccount} />
+      <PaymentCard clientName={data.clientName} logoUrl={data.logoUrl} brandColor={data.brandColor} bankAccount={data.bankAccount} />
     </div>
   );
 }

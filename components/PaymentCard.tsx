@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { CreditCard, Copy, Check } from 'lucide-react';
 import { event } from '@/lib/gtag';
 
@@ -13,10 +15,12 @@ interface BankAccount {
 
 interface PaymentCardProps {
   clientName: string;
+  logoUrl?: string | null;
+  brandColor?: string | null;
   bankAccount: BankAccount;
 }
 
-export default function PaymentCard({ clientName, bankAccount }: PaymentCardProps) {
+export default function PaymentCard({ clientName, logoUrl, brandColor, bankAccount }: PaymentCardProps) {
   const [copied, setCopied] = useState(false);
 
   const copyValue = bankAccount.interbank_clabe || bankAccount.card_number;
@@ -42,9 +46,22 @@ export default function PaymentCard({ clientName, bankAccount }: PaymentCardProp
 
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-8">
-        <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-4 shadow-inner">
-          <CreditCard className="w-5 h-5" />
-        </div>
+        {logoUrl ? (
+          <div className="bg-white border border-slate-100 shadow-sm rounded-xl p-3 mb-4">
+            <Image
+              src={logoUrl}
+              alt={`Logo de ${clientName}`}
+              width={640}
+              height={200}
+              sizes="380px"
+              className="w-72 max-h-32 object-contain"
+            />
+          </div>
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-4 shadow-inner">
+            <CreditCard className="w-5 h-5" />
+          </div>
+        )}
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">
           Datos de Transferencia
         </h2>
@@ -57,7 +74,7 @@ export default function PaymentCard({ clientName, bankAccount }: PaymentCardProp
       <div className="bg-slate-50/75 rounded-2xl p-5 border border-slate-100 space-y-4 mb-6">
         <div>
           <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-            Beneficiario / Negocio
+            Negocio / Beneficiario
           </span>
           <p className="text-sm font-semibold text-slate-900 mt-0.5">
             {clientName}
@@ -108,8 +125,11 @@ export default function PaymentCard({ clientName, bankAccount }: PaymentCardProp
             ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
             : copied
             ? 'bg-emerald-600 text-white shadow-emerald-600/10 hover:bg-emerald-700 cursor-pointer'
+            : brandColor
+            ? 'text-white shadow-black/10 hover:brightness-90 cursor-pointer'
             : 'bg-blue-600 text-white shadow-blue-600/10 hover:bg-blue-700 cursor-pointer'
         }`}
+        style={copyValue && !copied && brandColor ? { backgroundColor: brandColor } : undefined}
       >
         {copied ? (
           <>
@@ -127,9 +147,12 @@ export default function PaymentCard({ clientName, bankAccount }: PaymentCardProp
       {/* Decorative Brand */}
       <div className="flex items-center justify-center gap-1.5 mt-6 text-[10px] text-slate-400">
         <span>Desarrollado por</span>
-        <span className="font-extrabold text-[10px] text-pink-300 tracking-widest uppercase">
+        <Link
+          href="/"
+          className="font-extrabold text-[10px] text-pink-300 tracking-widest uppercase hover:text-pink-400 transition-colors"
+        >
           MIMUNDO3D
-        </span>
+        </Link>
       </div>
     </div>
   );

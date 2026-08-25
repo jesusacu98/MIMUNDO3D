@@ -127,20 +127,26 @@ export interface Database {
       };
       clients: {
         Row: {
-          id: string;
+          id: number;
           name: string;
+          logo_url: string | null;
+          brand_color: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
+          id?: number;
           name: string;
+          logo_url?: string | null;
+          brand_color?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
+          id?: number;
           name?: string;
+          logo_url?: string | null;
+          brand_color?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -148,36 +154,44 @@ export interface Database {
       };
       client_bank_accounts: {
         Row: {
-          id: string;
-          client_id: string;
+          id: number;
+          client_id: number;
           bank_name: string;
           card_number: string | null;
-          interbank_clabe: string;
+          interbank_clabe: string | null;
           account_holder_name: string;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
-          client_id: string;
+          id?: number;
+          client_id: number;
           bank_name: string;
           card_number?: string | null;
-          interbank_clabe: string;
+          interbank_clabe?: string | null;
           account_holder_name: string;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
-          client_id?: string;
+          id?: number;
+          client_id?: number;
           bank_name?: string;
           card_number?: string | null;
-          interbank_clabe?: string;
+          interbank_clabe?: string | null;
           account_holder_name?: string;
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "client_bank_accounts_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       orders: {
         Row: {
