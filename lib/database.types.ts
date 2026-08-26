@@ -131,6 +131,7 @@ export interface Database {
           name: string;
           logo_url: string | null;
           brand_color: string | null;
+          whatsapp_number: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -139,6 +140,7 @@ export interface Database {
           name: string;
           logo_url?: string | null;
           brand_color?: string | null;
+          whatsapp_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -147,6 +149,7 @@ export interface Database {
           name?: string;
           logo_url?: string | null;
           brand_color?: string | null;
+          whatsapp_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };

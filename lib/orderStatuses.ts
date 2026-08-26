@@ -2,6 +2,8 @@ export const ORDER_STATUSES = ['Pendiente Cotizar', 'Pendiente Imprimir', 'Impri
 
 export const PAYMENT_STATUSES = ['Pagado', 'Anticipo', 'Pendiente'];
 
+export const PAYMENT_METHODS = ['Efectivo Jesus', 'Efectivo Adriana', 'Efectivo Cajita', 'Transferencia Jesus', 'Transferencia Adriana'];
+
 export const orderStatusClass: Record<string, string> = {
   Entregado: 'bg-emerald-50 text-emerald-700',
   Imprimiendo: 'bg-blue-50 text-blue-700',

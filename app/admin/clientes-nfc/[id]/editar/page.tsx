@@ -26,7 +26,7 @@ export default async function EditarClienteNfcPage({ params, searchParams }: Pag
 
   const { data: client } = await supabaseAdmin
     .from('clients')
-    .select('id, name, logo_url, brand_color, client_bank_accounts (bank_name, account_holder_name, card_number, interbank_clabe)')
+    .select('id, name, logo_url, brand_color, whatsapp_number, client_bank_accounts (bank_name, account_holder_name, card_number, interbank_clabe)')
     .eq('id', Number(id))
     .maybeSingle();
 
@@ -52,6 +52,7 @@ export default async function EditarClienteNfcPage({ params, searchParams }: Pag
             name: client.name,
             logo_url: client.logo_url,
             brand_color: client.brand_color,
+            whatsapp_number: client.whatsapp_number,
             bank_name: account?.bank_name ?? '',
             account_holder_name: account?.account_holder_name ?? '',
             card_number: account?.card_number ?? null,

@@ -9,6 +9,7 @@ import { uploadClientLogo, deleteClientLogoIfManaged } from '@/lib/storage';
 interface ParsedNfcClient {
   name: string;
   brand_color: string | null;
+  whatsapp_number: string | null;
   bank_name: string;
   account_holder_name: string;
   card_number: string | null;
@@ -20,6 +21,7 @@ const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 function parseNfcClientForm(formData: FormData): { values: ParsedNfcClient } | { error: string } {
   const name = String(formData.get('name') || '').trim();
   const brandColorRaw = String(formData.get('brand_color') || '').trim();
+  const whatsappRaw = String(formData.get('whatsapp_number') || '').replace(/\D/g, '');
   const bankName = String(formData.get('bank_name') || '').trim();
   const accountHolderName = String(formData.get('account_holder_name') || '').trim();
   const cardNumberRaw = String(formData.get('card_number') || '').replace(/\s+/g, '');
@@ -28,6 +30,9 @@ function parseNfcClientForm(formData: FormData): { values: ParsedNfcClient } | {
   if (!name) return { error: 'Escribe el nombre del cliente o negocio.' };
   if (brandColorRaw && !HEX_COLOR_RE.test(brandColorRaw)) {
     return { error: 'El color de marca debe ser un hexadecimal válido, ej. #2563EB.' };
+  }
+  if (whatsappRaw && !/^\d{10,15}$/.test(whatsappRaw)) {
+    return { error: 'El WhatsApp debe tener solo dígitos (10 a 15).' };
   }
   if (!bankName) return { error: 'Escribe el nombre del banco.' };
   if (!accountHolderName) return { error: 'Escribe el nombre del titular de la cuenta.' };
@@ -45,6 +50,7 @@ function parseNfcClientForm(formData: FormData): { values: ParsedNfcClient } | {
     values: {
       name,
       brand_color: brandColorRaw ? brandColorRaw.toUpperCase() : null,
+      whatsapp_number: whatsappRaw || null,
       bank_name: bankName,
       account_holder_name: accountHolderName,
       card_number: cardNumberRaw || null,
@@ -81,11 +87,11 @@ export async function createNfcClient(formData: FormData) {
     return;
   }
 
-  const { name, brand_color, ...bankFields } = parsed.values;
+  const { name, brand_color, whatsapp_number, ...bankFields } = parsed.values;
 
   const { data: client, error: clientError } = await supabaseAdmin
     .from('clients')
-    .insert({ name, brand_color, logo_url: logoResult.url })
+    .insert({ name, brand_color, whatsapp_number, logo_url: logoResult.url })
     .select('id')
     .single();
 
@@ -126,12 +132,12 @@ export async function updateNfcClient(id: string, formData: FormData) {
     return;
   }
 
-  const { name, brand_color, ...bankFields } = parsed.values;
+  const { name, brand_color, whatsapp_number, ...bankFields } = parsed.values;
   const clientId = Number(id);
 
   const { error: clientError } = await supabaseAdmin
     .from('clients')
-    .update({ name, brand_color, logo_url: logoResult.url })
+    .update({ name, brand_color, whatsapp_number, logo_url: logoResult.url })
     .eq('id', clientId);
 
   if (clientError) {

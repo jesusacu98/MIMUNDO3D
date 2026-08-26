@@ -12,6 +12,7 @@ interface ClientFormValues {
   account_holder_name: string;
   card_number: string | null;
   interbank_clabe: string | null;
+  whatsapp_number: string | null;
 }
 
 interface ClientFormProps {
@@ -258,6 +259,22 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
             className={inputClass}
           />
           <p className="text-xs text-zinc-500 mt-1.5">Captura al menos la CLABE o el número de cuenta/tarjeta.</p>
+        </div>
+
+        <div>
+          <label htmlFor="whatsapp_number" className={labelClass}>
+            WhatsApp
+          </label>
+          <input
+            id="whatsapp_number"
+            name="whatsapp_number"
+            type="text"
+            inputMode="numeric"
+            placeholder="10 dígitos, ej. 6691224168"
+            defaultValue={initialValues?.whatsapp_number ?? ''}
+            className={inputClass}
+          />
+          <p className="text-xs text-zinc-500 mt-1.5">Opcional. Si lo capturas, en la página de pago aparece un botón para escribirle por WhatsApp.</p>
         </div>
       </div>
 

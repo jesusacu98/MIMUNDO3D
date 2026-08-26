@@ -5,6 +5,7 @@ interface ClientData {
   name: string;
   logo_url: string | null;
   brand_color: string | null;
+  whatsapp_number: string | null;
   client_bank_accounts: {
     bank_name: string;
     interbank_clabe: string | null;
@@ -34,6 +35,7 @@ export async function GET(
         name,
         logo_url,
         brand_color,
+        whatsapp_number,
         client_bank_accounts (
           bank_name,
           interbank_clabe,
@@ -59,6 +61,7 @@ export async function GET(
       clientName: clientData.name,
       logoUrl: clientData.logo_url,
       brandColor: clientData.brand_color,
+      whatsappNumber: clientData.whatsapp_number,
       bankAccount: {
         bank_name: bankAccount.bank_name,
         interbank_clabe: bankAccount.interbank_clabe,
