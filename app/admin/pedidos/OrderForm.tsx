@@ -47,7 +47,6 @@ interface ItemState {
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
-const OTHER_PAYMENT_METHOD = '__otro__';
 const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
 function newItemKey() {
@@ -74,9 +73,6 @@ export default function OrderForm({ action, products, initialValues, error, subm
   const [paymentStatus, setPaymentStatus] = useState(initialValues?.payment_status ?? '');
   const [advanceAmount, setAdvanceAmount] = useState(initialValues?.advance_amount ?? '');
   const initialPaymentMethod = initialValues?.payment_method ?? '';
-  const [paymentMethodIsOther, setPaymentMethodIsOther] = useState(
-    Boolean(initialPaymentMethod) && !PAYMENT_METHODS.includes(initialPaymentMethod)
-  );
   const [paymentMethod, setPaymentMethod] = useState(initialPaymentMethod);
 
   const updateItem = (key: string, patch: Partial<ItemState>) => {
@@ -330,52 +326,20 @@ export default function OrderForm({ action, products, initialValues, error, subm
           <label htmlFor="payment_method" className={labelClass}>
             Método de pago
           </label>
-          {paymentMethodIsOther ? (
-            <div className="flex gap-2 mt-2">
-              <input
-                id="payment_method"
-                name="payment_method"
-                type="text"
-                placeholder="Escribe el método de pago"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethodIsOther(false);
-                  setPaymentMethod('');
-                }}
-                className="text-xs font-bold text-zinc-500 hover:text-primary shrink-0 self-center whitespace-nowrap"
-              >
-                Elegir de la lista
-              </button>
-            </div>
-          ) : (
-            <select
-              id="payment_method"
-              name="payment_method"
-              value={PAYMENT_METHODS.includes(paymentMethod) ? paymentMethod : ''}
-              onChange={(e) => {
-                if (e.target.value === OTHER_PAYMENT_METHOD) {
-                  setPaymentMethodIsOther(true);
-                  setPaymentMethod('');
-                } else {
-                  setPaymentMethod(e.target.value);
-                }
-              }}
-              className={inputClass}
-            >
-              <option value="">Sin definir</option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {method}
-                </option>
-              ))}
-              <option value={OTHER_PAYMENT_METHOD}>Otro…</option>
-            </select>
-          )}
+          <select
+            id="payment_method"
+            name="payment_method"
+            value={PAYMENT_METHODS.includes(paymentMethod) ? paymentMethod : ''}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Sin definir</option>
+            {PAYMENT_METHODS.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
