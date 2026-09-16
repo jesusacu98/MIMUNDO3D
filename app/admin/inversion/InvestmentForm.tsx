@@ -68,20 +68,13 @@ export default function InvestmentForm({ action, initialValues, error, submitLab
         <label htmlFor="paid_by" className={labelClass}>
           Compró <span className="text-primary">*</span>
         </label>
-        <input
-          id="paid_by"
-          name="paid_by"
-          type="text"
-          required
-          list="paid_by_options"
-          placeholder="Ej. Jesus"
-          defaultValue={initialValues?.paid_by}
-          className={inputClass}
-        />
-        <datalist id="paid_by_options">
-          <option value="Jesus" />
-          <option value="Adriana" />
-        </datalist>
+        <select id="paid_by" name="paid_by" required defaultValue={initialValues?.paid_by || ''} className={inputClass}>
+          <option value="" disabled>
+            Selecciona
+          </option>
+          <option value="Adriana">Adriana</option>
+          <option value="Jesus">Jesus</option>
+        </select>
       </div>
 
       <SubmitButton className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer">

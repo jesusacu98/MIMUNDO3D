@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Plus, Pencil } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { PAYMENT_METHODS } from '@/lib/orderStatuses';
 import AdminHeader from '../AdminHeader';
 import DeleteInvestmentButton from './DeleteInvestmentButton';
 import { deleteInvestment } from './actions';
@@ -44,6 +45,38 @@ export default async function AdminInversionPage({ searchParams }: PageProps) {
     totalsByPayer.set(i.paid_by, (totalsByPayer.get(i.paid_by) ?? 0) + i.cost);
   }
 
+  const [{ data: ordersData }, { data: orderItemsData }] = await Promise.all([
+    supabaseAdmin.from('orders').select('id, payment_status, payment_method, advance_amount'),
+    supabaseAdmin.from('order_items').select('order_id, sale_price'),
+  ]);
+
+  const orderTotals = new Map<string, number>();
+  for (const item of orderItemsData ?? []) {
+    orderTotals.set(item.order_id, (orderTotals.get(item.order_id) ?? 0) + (item.sale_price ?? 0));
+  }
+
+  const collectedByMethod = new Map<string, number>();
+  for (const order of ordersData ?? []) {
+    if (!order.payment_method) continue;
+    const collected =
+      order.payment_status === 'Pagado'
+        ? orderTotals.get(order.id) ?? 0
+        : order.payment_status === 'Anticipo'
+          ? order.advance_amount ?? 0
+          : 0;
+    if (collected <= 0) continue;
+    collectedByMethod.set(order.payment_method, (collectedByMethod.get(order.payment_method) ?? 0) + collected);
+  }
+
+  const paidByPayer = new Map<string, number>();
+  for (const method of PAYMENT_METHODS) {
+    const payer = method.split(' ').slice(1).join(' ');
+    const amount = collectedByMethod.get(method) ?? 0;
+    paidByPayer.set(payer, (paidByPayer.get(payer) ?? 0) + amount);
+  }
+
+  const payers = Array.from(totalsByPayer.keys());
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <AdminHeader email={user.email ?? ''} />
@@ -67,12 +100,34 @@ export default async function AdminInversionPage({ searchParams }: PageProps) {
 
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">{error}</p>}
 
-        {totalsByPayer.size > 0 && (
+        {payers.length > 0 && (
+          <div className="flex flex-wrap gap-4 mb-4">
+            {payers.map((payer) => {
+              const invested = totalsByPayer.get(payer) ?? 0;
+              const paid = paidByPayer.get(payer) ?? 0;
+              const remaining = invested - paid;
+              return (
+                <div key={payer} className="bg-white border border-zinc-200/60 rounded-2xl px-5 py-4 flex items-center gap-6">
+                  <div>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{payer}</p>
+                    <p className="text-xl font-extrabold text-zinc-950">{currency.format(invested)}</p>
+                  </div>
+                  <div className="pl-6 border-l border-zinc-200">
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Resta</p>
+                    <p className="text-xl font-extrabold text-primary">{currency.format(remaining)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {PAYMENT_METHODS.length > 0 && (
           <div className="flex flex-wrap gap-4 mb-8">
-            {Array.from(totalsByPayer.entries()).map(([payer, amount]) => (
-              <div key={payer} className="bg-white border border-zinc-200/60 rounded-2xl px-5 py-4">
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{payer}</p>
-                <p className="text-xl font-extrabold text-zinc-950">{currency.format(amount)}</p>
+            {PAYMENT_METHODS.map((method) => (
+              <div key={method} className="bg-white border border-zinc-200/60 rounded-2xl px-5 py-4">
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{method}</p>
+                <p className="text-lg font-bold text-zinc-700">{currency.format(collectedByMethod.get(method) ?? 0)}</p>
               </div>
             ))}
           </div>
