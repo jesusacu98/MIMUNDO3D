@@ -1,12 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ImageOff, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ImageOff, Plus, X } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 
 interface CategoryOption {
   id: string;
   name: string;
+}
+
+interface ExtraImage {
+  id: string;
+  image_url: string;
 }
 
 interface ProductFormValues {
@@ -22,6 +27,7 @@ interface ProductFormValues {
   has_character_option: boolean;
   is_active: boolean;
   display_order: number;
+  extraImages?: ExtraImage[];
 }
 
 interface ProductFormProps {
@@ -45,11 +51,39 @@ export default function ProductForm({ categories, action, initialValues, error, 
   const [previewError, setPreviewError] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
 
+  const [removedExtraIds, setRemovedExtraIds] = useState<string[]>([]);
+  const [newExtraFiles, setNewExtraFiles] = useState<File[]>([]);
+  const extraFilesInputRef = useRef<HTMLInputElement>(null);
+  const visibleExtraImages = (initialValues?.extraImages ?? []).filter((img) => !removedExtraIds.includes(img.id));
+  const newExtraPreviews = useMemo(() => newExtraFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [newExtraFiles]);
+
   useEffect(() => {
     return () => {
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
     };
   }, [filePreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      newExtraPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+  }, [newExtraPreviews]);
+
+  useEffect(() => {
+    if (!extraFilesInputRef.current) return;
+    const dataTransfer = new DataTransfer();
+    newExtraFiles.forEach((file) => dataTransfer.items.add(file));
+    extraFilesInputRef.current.files = dataTransfer.files;
+  }, [newExtraFiles]);
+
+  const handleExtraFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    if (selected.length > 0) setNewExtraFiles((prev) => [...prev, ...selected]);
+  };
+
+  const removeNewExtraFile = (index: number) => {
+    setNewExtraFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     if (!showImageModal) return;
@@ -225,6 +259,68 @@ export default function ProductForm({ categories, action, initialValues, error, 
         </div>
 
         {initialValues?.image_url && <input type="hidden" name="current_image_url" value={initialValues.image_url} />}
+      </div>
+
+      <div>
+        <span className={labelClass}>Imágenes adicionales</span>
+        <p className="text-xs text-zinc-500 mt-1.5 mb-3">
+          Se muestran junto a la portada en un carrusel dentro del catálogo público. Puedes seleccionar varias a la vez.
+        </p>
+
+        {(visibleExtraImages.length > 0 || newExtraPreviews.length > 0) && (
+          <div className="flex flex-wrap gap-3 mb-3">
+            {visibleExtraImages.map((img) => (
+              <div key={img.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setRemovedExtraIds((prev) => [...prev, img.id])}
+                  aria-label="Quitar imagen"
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {newExtraPreviews.map((p, i) => (
+              <div key={p.url} className="relative w-20 h-20 rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeNewExtraFile(i)}
+                  aria-label="Quitar imagen"
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {removedExtraIds.map((id) => (
+          <input key={id} type="hidden" name="remove_image_ids" value={id} />
+        ))}
+
+        <label
+          htmlFor="extra_image_files"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-zinc-300 text-xs font-bold text-zinc-600 hover:border-primary hover:text-primary cursor-pointer transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Agregar imágenes
+        </label>
+        <input
+          ref={extraFilesInputRef}
+          id="extra_image_files"
+          name="extra_image_files"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleExtraFilesChange}
+          className="hidden"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -69,6 +69,52 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
   };
 }
 
+// Un mismo archivo de Storage puede seguir usándose como portada de otro
+// producto o como otra imagen adicional — sólo se borra del bucket si ya
+// no queda ninguna referencia a esa URL en la base.
+async function isImageUrlStillReferenced(url: string): Promise<boolean> {
+  const [{ count: productCount }, { count: imageCount }] = await Promise.all([
+    supabaseAdmin.from('products').select('id', { count: 'exact', head: true }).eq('image_url', url),
+    supabaseAdmin.from('product_images').select('id', { count: 'exact', head: true }).eq('image_url', url),
+  ]);
+  return (productCount ?? 0) > 0 || (imageCount ?? 0) > 0;
+}
+
+async function syncProductImages(productId: string, formData: FormData) {
+  const removeIds = formData.getAll('remove_image_ids').map(String).filter(Boolean);
+  if (removeIds.length > 0) {
+    const { data: toRemove } = await supabaseAdmin.from('product_images').select('id, image_url').in('id', removeIds);
+    await supabaseAdmin.from('product_images').delete().in('id', removeIds);
+    for (const img of toRemove ?? []) {
+      if (!(await isImageUrlStillReferenced(img.image_url))) {
+        await deleteCatalogImageIfManaged(img.image_url);
+      }
+    }
+  }
+
+  const files = formData.getAll('extra_image_files').filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > 0) {
+    const { data: existing } = await supabaseAdmin
+      .from('product_images')
+      .select('display_order')
+      .eq('product_id', productId)
+      .order('display_order', { ascending: false })
+      .limit(1);
+
+    let nextOrder = (existing?.[0]?.display_order ?? -1) + 1;
+    const rows: Database['public']['Tables']['product_images']['Insert'][] = [];
+    for (const file of files) {
+      const result = await uploadCatalogImage(file);
+      if ('error' in result) continue;
+      rows.push({ product_id: productId, image_url: result.url, display_order: nextOrder });
+      nextOrder += 1;
+    }
+    if (rows.length > 0) {
+      await supabaseAdmin.from('product_images').insert(rows);
+    }
+  }
+}
+
 export async function createProduct(formData: FormData) {
   if (!(await isCurrentUserAdmin())) redirect('/admin/login');
 
@@ -77,11 +123,13 @@ export async function createProduct(formData: FormData) {
     redirect(`/admin/productos/nuevo?error=${encodeURIComponent(parsed.error)}`);
   }
 
-  const { error } = await supabaseAdmin.from('products').insert(parsed.values);
+  const { data: created, error } = await supabaseAdmin.from('products').insert(parsed.values).select('id').single();
 
-  if (error) {
-    redirect(`/admin/productos/nuevo?error=${encodeURIComponent('No se pudo crear el producto: ' + error.message)}`);
+  if (error || !created) {
+    redirect(`/admin/productos/nuevo?error=${encodeURIComponent('No se pudo crear el producto: ' + (error?.message ?? ''))}`);
   }
+
+  await syncProductImages(created.id, formData);
 
   revalidatePath('/catalogo');
   revalidatePath('/admin/productos');
@@ -104,8 +152,12 @@ export async function updateProduct(id: string, formData: FormData) {
 
   const previousImageUrl = String(formData.get('current_image_url') || '');
   if (previousImageUrl && previousImageUrl !== parsed.values.image_url) {
-    await deleteCatalogImageIfManaged(previousImageUrl);
+    if (!(await isImageUrlStillReferenced(previousImageUrl))) {
+      await deleteCatalogImageIfManaged(previousImageUrl);
+    }
   }
+
+  await syncProductImages(id, formData);
 
   revalidatePath('/catalogo');
   revalidatePath('/admin/productos');

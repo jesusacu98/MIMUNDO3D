@@ -25,9 +25,10 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const [{ data: categoriesData }, { data: product }] = await Promise.all([
+  const [{ data: categoriesData }, { data: product }, { data: extraImages }] = await Promise.all([
     supabase.from('product_categories').select('id, name').order('display_order', { ascending: true }),
     supabaseAdmin.from('products').select('*').eq('id', id).maybeSingle(),
+    supabaseAdmin.from('product_images').select('id, image_url').eq('product_id', id).order('display_order', { ascending: true }),
   ]);
 
   if (!product) notFound();
@@ -61,6 +62,7 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
             has_character_option: product.has_character_option,
             is_active: product.is_active,
             display_order: product.display_order,
+            extraImages: extraImages ?? [],
           }}
         />
       </main>
