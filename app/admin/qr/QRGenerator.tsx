@@ -2,17 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { Download, QrCode as QrCodeIcon } from 'lucide-react';
-import { buildQrSvg } from '@/lib/qr';
+import { buildQrSvg, downloadSvg } from '@/lib/qr';
 
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
-
-function sanitizeFileName(name: string) {
-  const trimmed = name.trim() || 'qr';
-  const safe = trimmed.replace(/[\\/:*?"<>|]+/g, '-');
-  return safe.toLowerCase().endsWith('.svg') ? safe : `${safe}.svg`;
-}
 
 export default function QRGenerator() {
   const [url, setUrl] = useState('');
@@ -34,13 +28,7 @@ export default function QRGenerator() {
 
   const handleDownload = () => {
     if (!ready || !svg) return;
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = sanitizeFileName(fileName);
-    link.click();
-    URL.revokeObjectURL(objectUrl);
+    downloadSvg(svg, fileName);
   };
 
   return (

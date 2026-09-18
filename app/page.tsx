@@ -1,8 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin } from "lucide-react";
+import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin, Briefcase, KeyRound, Home as HomeIcon } from "lucide-react";
 import TrackedLink from "@/components/TrackedLink";
 import AdminNavLink from "@/components/AdminNavLink";
+import { HOME_CATEGORIES } from "@/lib/homeCategories";
+
+const CATEGORY_ICONS: Record<string, typeof Briefcase> = {
+  negocios: Briefcase,
+  llaveros: KeyRound,
+  hogar: HomeIcon,
+};
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -96,6 +103,45 @@ export default function Home() {
             >
               Saber Más
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-20 bg-white relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
+              Explora por categoría
+            </h2>
+            <p className="mt-4 text-zinc-600">
+              Encuentra el producto ideal según lo que necesitas.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {HOME_CATEGORIES.map((category) => {
+              const Icon = CATEGORY_ICONS[category.slug];
+              return (
+                <div
+                  key={category.slug}
+                  className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 group flex flex-col"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-5 group-hover:bg-primary group-hover:text-white transition-all">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-zinc-950 mb-2">{category.dbName}</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed mb-6 flex-grow">{category.description}</p>
+                  <Link
+                    href={`/categorias/${category.slug}`}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary-dark transition-colors cursor-pointer"
+                  >
+                    Ver más
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

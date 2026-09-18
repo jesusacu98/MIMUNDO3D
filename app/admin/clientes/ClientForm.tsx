@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ImageOff } from 'lucide-react';
+import { ImageOff, Nfc, Link2, Copy, Check, Download } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
+import { SOCIAL_NETWORKS } from '@/lib/socialNetworks';
+import { buildQrSvg, downloadSvg } from '@/lib/qr';
 
 interface ClientFormValues {
   name: string;
@@ -18,6 +20,10 @@ interface ClientFormValues {
 interface ClientFormProps {
   action: (formData: FormData) => void | Promise<void>;
   initialValues?: ClientFormValues;
+  // Sólo al editar: id del cliente (para mostrar los links cortos) y redes ya guardadas.
+  clientId?: number;
+  socialLinks?: Record<string, string>;
+  initialTab?: 'nfc' | 'redes';
   error?: string;
   submitLabel: string;
 }
@@ -53,7 +59,9 @@ const KNOWN_BANKS = [
 ];
 const OTHER_BANK = '__otro__';
 
-export default function ClientForm({ action, initialValues, error, submitLabel }: ClientFormProps) {
+export default function ClientForm({ action, initialValues, clientId, socialLinks = {}, initialTab = 'nfc', error, submitLabel }: ClientFormProps) {
+  const [tab, setTab] = useState<'nfc' | 'redes'>(initialTab);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(initialValues?.logo_url ?? null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [brandColor, setBrandColor] = useState(initialValues?.brand_color ?? '');
@@ -67,8 +75,28 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
     setLogoPreview(file ? URL.createObjectURL(file) : (initialValues?.logo_url ?? null));
   };
 
+  const handleCopy = async (key: string) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/r/${clientId}/${key}`);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (err) {
+      console.error('Error al copiar al portapapeles: ', err);
+    }
+  };
+
+  const handleDownloadQr = (key: string) => {
+    const svg = buildQrSvg(`${window.location.origin}/r/${clientId}/${key}`);
+    downloadSvg(svg, `${initialValues?.name || 'cliente'}-${key}`);
+  };
+
+  const tabClass = (active: boolean) =>
+    `inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+      active ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+    }`;
+
   return (
-    <form action={action} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 max-w-lg space-y-6">
+    <form action={action} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 max-w-2xl space-y-6">
       {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
 
       <div>
@@ -86,6 +114,19 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
         />
       </div>
 
+      <div role="tablist" className="flex gap-2 border-t border-zinc-100 pt-6">
+        <button type="button" role="tab" aria-selected={tab === 'nfc'} onClick={() => setTab('nfc')} className={tabClass(tab === 'nfc')}>
+          <Nfc className="w-3.5 h-3.5" />
+          NFC
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'redes'} onClick={() => setTab('redes')} className={tabClass(tab === 'redes')}>
+          <Link2 className="w-3.5 h-3.5" />
+          Redes
+        </button>
+      </div>
+
+      {/* Los dos paneles viven en el mismo <form>: el oculto también se envía. */}
+      <div hidden={tab !== 'nfc'} className="space-y-6">
       <div>
         <label htmlFor="logo_file" className={labelClass}>
           Logo del negocio
@@ -157,11 +198,14 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
       </div>
 
       <div className="border-t border-zinc-100 pt-6 space-y-6">
-        <p className="text-xs text-zinc-500">Datos que se muestran en la página de pago (<span className="font-mono">/pago/[id]</span>) cuando escanean su letrero NFC.</p>
+        <p className="text-xs text-zinc-500">
+          Datos que se muestran en la página de pago (<span className="font-mono">/pago/[id]</span>) cuando escanean su letrero NFC. Si este
+          cliente no usa NFC, deja los datos bancarios vacíos.
+        </p>
 
         <div>
           <label htmlFor="bank_name" className={labelClass}>
-            Banco <span className="text-primary">*</span>
+            Banco
           </label>
           {bankIsOther ? (
             <div className="flex gap-2 mt-2">
@@ -169,7 +213,6 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
                 id="bank_name"
                 name="bank_name"
                 type="text"
-                required
                 placeholder="Nombre del banco"
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
@@ -190,7 +233,6 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
             <select
               id="bank_name"
               name="bank_name"
-              required
               value={KNOWN_BANKS.includes(bankName) ? bankName : ''}
               onChange={(e) => {
                 if (e.target.value === OTHER_BANK) {
@@ -202,9 +244,7 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
               }}
               className={textInputClass}
             >
-              <option value="" disabled>
-                Selecciona un banco
-              </option>
+              <option value="">Selecciona un banco</option>
               {KNOWN_BANKS.map((bank) => (
                 <option key={bank} value={bank}>
                   {bank}
@@ -217,13 +257,12 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
 
         <div>
           <label htmlFor="account_holder_name" className={labelClass}>
-            Titular de la cuenta <span className="text-primary">*</span>
+            Titular de la cuenta
           </label>
           <input
             id="account_holder_name"
             name="account_holder_name"
             type="text"
-            required
             placeholder="Nombre completo del titular"
             defaultValue={initialValues?.account_holder_name}
             className={textInputClass}
@@ -276,6 +315,58 @@ export default function ClientForm({ action, initialValues, error, submitLabel }
           />
           <p className="text-xs text-zinc-500 mt-1.5">Opcional. Si lo capturas, en la página de pago aparece un botón para escribirle por WhatsApp.</p>
         </div>
+      </div>
+
+      </div>
+
+      <div hidden={tab !== 'redes'} className="space-y-6">
+        <p className="text-xs text-zinc-500">
+          Un link por red. Cada una queda con un link corto <span className="font-mono">/r/[cliente]/[red]</span> para compartir. Deja vacía una
+          red para quitarla.
+        </p>
+
+        {SOCIAL_NETWORKS.map((network) => {
+          const saved = Boolean(socialLinks[network.key]);
+          return (
+            <div key={network.key}>
+              <label htmlFor={`url_${network.key}`} className={labelClass}>
+                {network.label}
+              </label>
+              <input
+                id={`url_${network.key}`}
+                name={`url_${network.key}`}
+                type="text"
+                placeholder={network.placeholder}
+                defaultValue={socialLinks[network.key] ?? ''}
+                className={textInputClass}
+              />
+              {saved && clientId !== undefined && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="font-mono text-xs text-zinc-600 break-all">
+                    /r/{clientId}/{network.key}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(network.key)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark cursor-pointer shrink-0"
+                  >
+                    {copiedKey === network.key ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedKey === network.key ? 'Copiado' : 'Copiar link'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadQr(network.key)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-dark cursor-pointer shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Descargar QR
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {clientId === undefined && <p className="text-xs text-zinc-500">El link corto de cada red aparece al guardar el cliente.</p>}
       </div>
 
       <SubmitButton className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer">

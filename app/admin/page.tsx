@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Nfc } from 'lucide-react';
+import { Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Users } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -132,14 +132,14 @@ export default async function AdminPage() {
           </Link>
 
           <Link
-            href="/admin/clientes-nfc"
+            href="/admin/clientes"
             className="block bg-white border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
-              <Nfc className="w-6 h-6" />
+              <Users className="w-6 h-6" />
             </div>
             <p className="text-3xl font-extrabold text-zinc-950">{clientCount ?? 0}</p>
-            <p className="text-sm text-zinc-500">clientes NFC — gestionar →</p>
+            <p className="text-sm text-zinc-500">clientes — gestionar →</p>
           </Link>
         </div>
       </main>

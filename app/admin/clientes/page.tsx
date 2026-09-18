@@ -10,7 +10,7 @@ interface PageProps {
   searchParams: Promise<{ error?: string }>;
 }
 
-export default async function ClientesNfcPage({ searchParams }: PageProps) {
+export default async function ClientesPage({ searchParams }: PageProps) {
   const { error } = await searchParams;
 
   const supabaseAuth = await createServerSupabaseClient();
@@ -24,7 +24,9 @@ export default async function ClientesNfcPage({ searchParams }: PageProps) {
 
   const { data: clientsData } = await supabaseAdmin
     .from('clients')
-    .select('id, name, logo_url, brand_color, client_bank_accounts (bank_name, account_holder_name, card_number, interbank_clabe)')
+    .select(
+      'id, name, logo_url, brand_color, client_bank_accounts (bank_name, account_holder_name, card_number, interbank_clabe), client_social_links (network)'
+    )
     .order('id', { ascending: false });
 
   const clients = clientsData ?? [];
@@ -36,13 +38,14 @@ export default async function ClientesNfcPage({ searchParams }: PageProps) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-2">Clientes NFC</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-2">Clientes</h1>
             <p className="text-zinc-600">
-              {clients.length} cliente(s) con página de pago (<span className="font-mono">/pago/[id]</span>) para su letrero NFC.
+              {clients.length} cliente(s). Cada uno puede tener página de pago NFC (<span className="font-mono">/pago/[id]</span>) y links cortos de
+              redes (<span className="font-mono">/r/[id]/[red]</span>).
             </p>
           </div>
           <Link
-            href="/admin/clientes-nfc/nuevo"
+            href="/admin/clientes/nuevo"
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
@@ -58,9 +61,9 @@ export default async function ClientesNfcPage({ searchParams }: PageProps) {
               <tr>
                 <th className="px-5 py-3" />
                 <th className="text-left px-5 py-3 font-semibold">Cliente</th>
-                <th className="text-left px-5 py-3 font-semibold">Banco</th>
-                <th className="text-left px-5 py-3 font-semibold">Cuenta / CLABE</th>
+                <th className="text-left px-5 py-3 font-semibold">NFC</th>
                 <th className="text-left px-5 py-3 font-semibold">Página de pago</th>
+                <th className="text-left px-5 py-3 font-semibold">Redes</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -90,24 +93,39 @@ export default async function ClientesNfcPage({ searchParams }: PageProps) {
                         {client.name}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-zinc-600">{account?.bank_name ?? '—'}</td>
-                    <td className="px-5 py-3 text-zinc-600 font-mono text-xs">
-                      {account?.interbank_clabe || account?.card_number || '—'}
+                    <td className="px-5 py-3 text-zinc-600">
+                      {account ? (
+                        <>
+                          <span>{account.bank_name}</span>
+                          <span className="block font-mono text-xs text-zinc-500">{account.interbank_clabe || account.card_number}</span>
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-5 py-3">
-                      <a
-                        href={`/pago/${client.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-primary"
-                      >
-                        /pago/{client.id}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                      {account ? (
+                        <a
+                          href={`/pago/${client.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-primary"
+                        >
+                          /pago/{client.id}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span className="text-zinc-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-zinc-600">
+                      {client.client_social_links && client.client_social_links.length > 0
+                        ? client.client_social_links.map((l) => l.network).join(', ')
+                        : '—'}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Link
-                        href={`/admin/clientes-nfc/${client.id}/editar`}
+                        href={`/admin/clientes/${client.id}/editar`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-dark"
                       >
                         <Pencil className="w-3.5 h-3.5" />

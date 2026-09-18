@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Home, LayoutGrid, LayoutDashboard, Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Nfc, LogOut } from 'lucide-react';
+import { Home, LayoutGrid, LayoutDashboard, Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Users, LogOut } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 import { signOutAction } from './actions';
 
@@ -41,8 +41,8 @@ export default function AdminHeader({ email }: { email: string }) {
             <Link href="/admin/qr" aria-label="Generador de QR" title="Generador de QR" className={navIconClass}>
               <QrCode className="w-4 h-4" />
             </Link>
-            <Link href="/admin/clientes-nfc" aria-label="Clientes NFC" title="Clientes NFC" className={navIconClass}>
-              <Nfc className="w-4 h-4" />
+            <Link href="/admin/clientes" aria-label="Clientes" title="Clientes" className={navIconClass}>
+              <Users className="w-4 h-4" />
             </Link>
           </nav>
         </div>

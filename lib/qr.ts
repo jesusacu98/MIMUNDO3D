@@ -41,3 +41,20 @@ export function buildQrSvg(data: string, options: BuildQrSvgOptions = {}): strin
   // Sin rect de fondo: el SVG queda con fondo transparente.
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim} ${dim}"><path d="${path}" fill="#000000"/></svg>`;
 }
+
+export function sanitizeSvgFileName(name: string): string {
+  const trimmed = name.trim() || 'qr';
+  const safe = trimmed.replace(/[\\/:*?"<>|]+/g, '-');
+  return safe.toLowerCase().endsWith('.svg') ? safe : `${safe}.svg`;
+}
+
+// Sólo navegador: dispara la descarga de un SVG ya generado con buildQrSvg.
+export function downloadSvg(svg: string, fileName: string): void {
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = sanitizeSvgFileName(fileName);
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
