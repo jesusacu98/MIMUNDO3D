@@ -33,6 +33,11 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
 
   if (!product) notFound();
 
+  const { data: subcategoriesData } = await supabaseAdmin
+    .from('product_subcategories')
+    .select('id, name, category_id')
+    .order('display_order', { ascending: true });
+
   const updateProductWithId = updateProduct.bind(null, id);
 
   return (
@@ -46,6 +51,7 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
 
         <ProductForm
           categories={categoriesData ?? []}
+          subcategories={subcategoriesData ?? []}
           action={updateProductWithId}
           error={error}
           submitLabel="Guardar cambios"
@@ -53,6 +59,7 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
             name: product.name,
             category_id: product.category_id,
             description: product.description,
+            subcategory_id: product.subcategory_id,
             price: product.price,
             cost: product.cost,
             is_starting_price: product.is_starting_price,
@@ -61,6 +68,9 @@ export default async function EditarProductoPage({ params, searchParams }: PageP
             has_business_info: product.has_business_info,
             has_character_option: product.has_character_option,
             is_active: product.is_active,
+            is_trending: product.is_trending,
+            is_new: product.is_new,
+            is_promo: product.is_promo,
             display_order: product.display_order,
             extraImages: extraImages ?? [],
           }}

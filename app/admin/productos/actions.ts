@@ -26,6 +26,7 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
   const name = String(formData.get('name') || '').trim();
   const categoryId = String(formData.get('category_id') || '').trim();
   const description = String(formData.get('description') || '').trim();
+  const subcategoryId = String(formData.get('subcategory_id') || '').trim();
   const priceRaw = String(formData.get('price') || '').trim();
   const price = Number(priceRaw);
   const costRaw = String(formData.get('cost') || '').trim();
@@ -46,6 +47,18 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
     return { error: 'El orden debe ser un número válido.' };
   }
 
+  if (subcategoryId) {
+    const { data: sub } = await supabaseAdmin
+      .from('product_subcategories')
+      .select('id')
+      .eq('id', subcategoryId)
+      .eq('category_id', categoryId)
+      .maybeSingle();
+    if (!sub) {
+      return { error: 'La subcategoría elegida no pertenece a la categoría del producto.' };
+    }
+  }
+
   const imageResult = await resolveImageUrl(formData);
   if ('error' in imageResult) {
     return { error: imageResult.error };
@@ -56,6 +69,7 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
       name,
       category_id: categoryId,
       description,
+      subcategory_id: subcategoryId || null,
       image_url: imageResult.url,
       price,
       cost,
@@ -65,6 +79,9 @@ async function parseProductForm(formData: FormData): Promise<{ values: ProductIn
       has_business_info: formData.get('has_business_info') === 'on',
       has_character_option: formData.get('has_character_option') === 'on',
       is_active: formData.get('is_active') === 'on',
+      is_trending: formData.get('is_trending') === 'on',
+      is_new: formData.get('is_new') === 'on',
+      is_promo: formData.get('is_promo') === 'on',
     },
   };
 }

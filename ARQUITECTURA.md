@@ -46,6 +46,7 @@ app/
     login/page.tsx            Login con Supabase Auth
     productos/                CRUD de productos del catálogo (crear/editar; borrar sólo vía is_active)
     categorias/                CRUD de categorías (crear/editar/borrar)
+    subcategorias/             CRUD de subcategorías por categoría (crear/editar/borrar); se asignan a cada producto en /admin/productos
     clientes/                   Alta/edición de clientes con dos secciones en el mismo formulario: NFC (logo, color de marca, WhatsApp, cuenta bancaria) y Redes (links por red)
     pedidos/                    Ventas: alta/edición de pedidos con líneas de producto, estatus, anticipo/pago, KPIs de cobranza
     inversion/                  Registro de gastos/inversión del negocio (fecha, concepto, costo, quién pagó)
@@ -56,6 +57,7 @@ app/
     pago/[client_id]/route.ts  Endpoint real: consulta Supabase con la service role key
   r/[client_id]/[network]/route.ts  Redirección corta pública (302) a la red social guardada del cliente; acepta alias (`ig`, `fb`, `tt`, `wa`...). Si no existe, redirige a `/`
 components/
+  ProductCarousel.tsx           Carrusel horizontal de tarjetas de producto (home y "Productos similares" de la ficha)
   PaymentCard.tsx             Tarjeta de datos bancarios + copiado al portapapeles + botón de WhatsApp opcional
   TrackedLink.tsx              Wrapper de `<a>` que dispara eventos de GA4 al hacer click (usado en los footers)
   AdminNavLink.tsx              Client Component: muestra el link a /admin en la nav pública sólo si hay sesión (evita leer cookies en Server Components públicos)
@@ -87,9 +89,10 @@ supabase/
 
 | Ruta | Tipo | Descripción |
 |---|---|---|
-| `/` | Server Component (estático) | Landing: hero, servicios (FDM/SLA/NFC/Modelado), footer. Tema **claro** (`bg-zinc-50`). |
+| `/` | Server Component (ISR 60s) | Landing: carrusel de Tendencia (arriba de todo), hero, categorías, carruseles de Novedades y Promociones, servicios (FDM/SLA/NFC/Modelado), footer. Tema **claro** (`bg-zinc-50`). |
 | `/catalogo` | Server Component async (`page.tsx`) + Client Component (`CatalogoClient.tsx`) | El Server Component consulta `product_categories`/`product_colors`/`products` en Supabase con el cliente anon (RLS de lectura pública) y pasa los datos como props al Client Component, que maneja búsqueda, filtro por categoría y el modal de producto. ISR con `revalidate = 60`. Tema **oscuro** (`bg-slate-950`). |
 | `/pago/[client_id]` | Client Component (`'use client'`) | Lee `client_id` de `params` (Promise, ver §6), hace `fetch('/api/pago/${client_id}')` desde el navegador y renderiza `<PaymentCard>` o un estado de error/carga. |
+| `/categorias/[categoria]` | Server Component + Client Component (`CategoryProducts.tsx`) | Páginas de categoría del home (`lib/homeCategories.ts`: negocios, llaveros, hogar). El servidor trae los productos activos de la categoría y el cliente los filtra al instante: buscador en tiempo real (espera 350 ms tras dejar de escribir; no va en la URL) y sección de filtros con select de subcategoría (`product_subcategories`) y rango de precio, que sí se guardan en la URL (`?tipo=cortadores-de-galletas&min=100&max=300`) con `history.replaceState`, así que el enlace se puede compartir. "Copiar enlace" sólo se muestra a admins (`lib/useIsAdmin.ts`). Los filtros se conservan al abrir un producto (`?desde=…&tipo=…&min=…&max=…`) y al volver. |
 | `/api/hello` | Route Handler | Endpoint de ejemplo dejado por el scaffolding inicial, con un comentario TODO (`//Crear api para obtener los dato de la bd`). No lo consume ninguna página. Candidato a eliminar. |
 | `/api/pago/[client_id]` | Route Handler | Único endpoint real de datos. Usa `supabaseAdmin` (service role key) para hacer join `clients` + `client_bank_accounts` y devuelve `{ clientName, logoUrl, brandColor, whatsappNumber, bankAccount }` o 404/400/500. |
 | `/admin/*` | Server Components + Server Actions, protegidos | Ver §4bis para el detalle de cada módulo. Tema **claro** (`bg-zinc-50`), igual que la landing. |
@@ -121,6 +124,9 @@ Tres tablas (ver `supabase/schema_catalog.sql`):
 **`product_categories`**
 - `id` (uuid, PK), `name` (unique), `display_order`, `created_at`, `updated_at`
 
+**`product_subcategories`**
+- `id` (uuid, PK), `category_id` (FK → `product_categories.id`, cascade), `name` (único por categoría), `display_order`, `created_at`, `updated_at`. Se administra en `/admin/subcategorias` y alimenta el select de "Subcategoría" de los filtros de `/categorias/[categoria]`. Lectura pública vía RLS; sólo `supabaseAdmin` escribe.
+
 **`product_colors`**
 - Paleta global de colores ofrecida en todos los productos (no hay restricción por producto todavía).
 - `id` (uuid, PK), `name` (unique), `hex_code`, `display_order`, `created_at`
@@ -129,6 +135,8 @@ Tres tablas (ver `supabase/schema_catalog.sql`):
 - `id` (uuid, PK), `category_id` (FK → `product_categories.id`)
 - `price` (numeric, sin símbolo "$" ni texto — el frontend lo formatea) + `is_starting_price` (boolean: `true` = "Desde $X MXN", `false` = precio fijo "$X MXN")
 - `cost` (numeric, nullable) — costo de fabricación, **admin-only**: `app/catalogo/page.tsx` no lo incluye en su `select()` con el cliente anon, así que nunca llega al catálogo público aunque RLS no lo bloquee explícitamente por columna.
+- `is_trending` / `is_new` / `is_promo` (boolean, default false; `supabase/schema_catalog_v5.sql`) — destacados que se marcan en `/admin/productos` ("Destacar en el inicio") y alimentan los carruseles Tendencia / Novedades y nuevos productos / Promociones y descuentos del home (`lib/featuredProducts.ts`, hasta 12 c/u; novedades por `created_at` más reciente; el home usa ISR `revalidate = 60`). Un carrusel sin productos no se muestra.
+- `subcategory_id` (FK → `product_subcategories.id`, `on delete set null`; `supabase/schema_catalog_v4.sql`) — subcategoría opcional del producto, se elige en `/admin/productos` (el select sólo lista las subcategorías de la categoría elegida). La columna de texto `subcategory` de `schema_catalog_v3.sql` quedó sin uso.
 - `is_personalizable` / `has_business_info` / `has_character_option` — controlan qué campos del formulario se muestran en el modal de producto
 - `is_active` (soft-hide sin borrar) y `display_order` (orden manual)
 - Lectura pública vía RLS (`is_active = true`); sólo `supabaseAdmin` puede escribir.

@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { HOME_CATEGORIES } from '@/lib/homeCategories';
 import { event } from '@/lib/gtag';
-import type { Product, ColorOption } from '../types';
+import type { Product } from '../types';
 import { formatPrice } from '../types';
 import ProductThumbnail from '../ProductThumbnail';
 import { WhatsAppIcon } from '../icons';
@@ -14,12 +15,12 @@ const WHATSAPP_NUMBER = '526691224168';
 
 interface ProductDetailClientProps {
   product: Product;
-  colors: ColorOption[];
+  backHref: string;
+  backLabel: string;
 }
 
-export default function ProductDetailClient({ product, colors }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, backHref, backLabel }: ProductDetailClientProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [customName, setCustomName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [eslogan, setEslogan] = useState('');
@@ -31,23 +32,27 @@ export default function ProductDetailClient({ product, colors }: ProductDetailCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
+
+  const categorySlug = HOME_CATEGORIES.find((c) => c.dbName === product.category)?.slug;
+  const currentImage = product.images[selectedImageIndex] ?? product.image;
+
   return (
     <div>
-      <Link href="/catalogo" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 mb-8">
+      <Link href={backHref} className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 mb-8">
         <ArrowLeft className="w-4 h-4" />
-        Volver al catálogo
+        {backLabel}
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-12 gap-y-10">
         {/* Galería */}
-        <div>
+        <div className="lg:col-start-1 lg:row-start-1">
           <div className="aspect-square w-full bg-zinc-50 rounded-2xl border border-zinc-200/60 relative overflow-hidden">
-            <ProductThumbnail
-              key={product.images[selectedImageIndex] ?? product.image}
-              src={product.images[selectedImageIndex] ?? product.image}
-              alt={product.name}
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
+            <ProductThumbnail key={currentImage} src={currentImage} alt={product.name} sizes="(max-width: 1024px) 100vw, 60vw" />
+            {product.images.length > 1 && (
+              <span className="absolute top-4 right-4 text-sm font-medium text-zinc-600 bg-white/80 backdrop-blur px-2.5 py-0.5 rounded-full">
+                {selectedImageIndex + 1} / {product.images.length}
+              </span>
+            )}
           </div>
 
           {product.images.length > 1 && (
@@ -68,11 +73,29 @@ export default function ProductDetailClient({ product, colors }: ProductDetailCl
           )}
         </div>
 
-        {/* Info */}
-        <div>
-          <span className="text-xs text-primary font-semibold uppercase tracking-wider">{product.category}</span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mt-2 mb-4">{product.name}</h1>
-          <p className="text-zinc-600 leading-relaxed mb-8">{product.description}</p>
+        {/* Info (a la derecha en escritorio, sigue al hacer scroll por la descripción) */}
+        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-start lg:sticky lg:top-24">
+          <nav aria-label="Ruta" className="text-xs text-zinc-500 mb-3 flex flex-wrap items-center gap-x-1.5">
+            <Link href="/" className="hover:text-zinc-900">
+              Inicio
+            </Link>
+            <span>&gt;</span>
+            {categorySlug ? (
+              <Link href={`/categorias/${categorySlug}`} className="hover:text-zinc-900">
+                {product.category}
+              </Link>
+            ) : (
+              <span>{product.category}</span>
+            )}
+            <span>&gt;</span>
+            <span className="text-zinc-700">{product.name}</span>
+          </nav>
+
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mb-4">{product.name}</h1>
+          <p className="text-3xl font-medium text-zinc-950 mb-3">{formatPrice(product)}</p>
+          <a href="#descripcion" className="inline-block text-xs text-zinc-600 underline underline-offset-2 hover:text-zinc-950 mb-8">
+            Ver más detalles
+          </a>
 
           {product.personalizable && (
             <div className="mb-6">
@@ -149,58 +172,39 @@ export default function ProductDetailClient({ product, colors }: ProductDetailCl
             </>
           )}
 
-          <div className="mb-8">
-            <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
-              Color {selectedColor ? `— ${selectedColor}` : ''} <span className="text-primary">*</span>
-            </span>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {colors.map((color) => (
-                <button
-                  key={color.name}
-                  onClick={() => setSelectedColor(color.name === selectedColor ? null : color.name)}
-                  title={color.name}
-                  aria-label={color.name}
-                  className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer ${
-                    selectedColor === color.name ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-zinc-200 hover:border-zinc-300'
-                  }`}
-                  style={{ backgroundColor: color.hex }}
-                />
-              ))}
-            </div>
-            {attemptedSubmit && !selectedColor && <p className="text-xs text-red-500 mt-2">Selecciona un color.</p>}
-          </div>
+          <button
+            onClick={() => {
+              const missingName = product.personalizable && !customName.trim();
+              const missingBusinessName = product.businessInfo && !businessName.trim();
+              const missingEslogan = product.businessInfo && !eslogan.trim();
+              if (missingName || missingBusinessName || missingEslogan) {
+                setAttemptedSubmit(true);
+                return;
+              }
+              const message = `¡Hola, MiMundo3D! 👋 Me interesa este producto: ${product.name} (${product.category})${
+                customName.trim() ? `, nombre: ${customName.trim()}` : ''
+              }${characterName.trim() ? `, personaje: ${characterName.trim()}` : ''}${
+                businessName.trim() ? `, negocio/marca: ${businessName.trim()}` : ''
+              }${eslogan.trim() ? `, eslogan: ${eslogan.trim()}` : ''}. ¿Me pueden dar más información?`;
+              event('generate_lead', {
+                method: 'whatsapp',
+                source: 'catalog_product_page',
+                item_name: product.name,
+                item_category: product.category,
+              });
+              window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+            }}
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-[0.99] cursor-pointer"
+          >
+            <WhatsAppIcon className="w-4 h-4" />
+            Pedir por WhatsApp
+          </button>
+        </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t border-zinc-200">
-            <span className="text-3xl font-extrabold text-zinc-950">{formatPrice(product)}</span>
-            <button
-              onClick={() => {
-                const missingName = product.personalizable && !customName.trim();
-                const missingBusinessName = product.businessInfo && !businessName.trim();
-                const missingEslogan = product.businessInfo && !eslogan.trim();
-                const missingColor = !selectedColor;
-                if (missingName || missingBusinessName || missingEslogan || missingColor) {
-                  setAttemptedSubmit(true);
-                  return;
-                }
-                const message = `¡Hola, MiMundo3D! 👋 Me interesa este producto: ${product.name} (${product.category})${
-                  customName.trim() ? `, nombre: ${customName.trim()}` : ''
-                }${characterName.trim() ? `, personaje: ${characterName.trim()}` : ''}${
-                  businessName.trim() ? `, negocio/marca: ${businessName.trim()}` : ''
-                }${eslogan.trim() ? `, eslogan: ${eslogan.trim()}` : ''}, color: ${selectedColor}. ¿Me pueden dar más información?`;
-                event('generate_lead', {
-                  method: 'whatsapp',
-                  source: 'catalog_product_page',
-                  item_name: product.name,
-                  item_category: product.category,
-                });
-                window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-              }}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-            >
-              <WhatsAppIcon className="w-4 h-4" />
-              Pedir por WhatsApp
-            </button>
-          </div>
+        {/* Descripción */}
+        <div id="descripcion" className="lg:col-start-1 lg:row-start-2 scroll-mt-24">
+          <h2 className="text-lg font-bold text-zinc-950 mb-3">Descripción</h2>
+          <p className="text-zinc-700 leading-relaxed whitespace-pre-line">{product.description}</p>
         </div>
       </div>
     </div>

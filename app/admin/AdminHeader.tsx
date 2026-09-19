@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Home, LayoutGrid, LayoutDashboard, Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Users, LogOut } from 'lucide-react';
+import { Home, LayoutGrid, LayoutDashboard, Package, Tags, Layers, Calculator, ClipboardList, PiggyBank, QrCode, Users, LogOut } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 import { signOutAction } from './actions';
 
@@ -34,6 +34,9 @@ export default function AdminHeader({ email }: { email: string }) {
             </Link>
             <Link href="/admin/categorias" aria-label="Categorías" title="Categorías" className={navIconClass}>
               <Tags className="w-4 h-4" />
+            </Link>
+            <Link href="/admin/subcategorias" aria-label="Subcategorías" title="Subcategorías" className={navIconClass}>
+              <Layers className="w-4 h-4" />
             </Link>
             <Link href="/admin/calculadora" aria-label="Calculadora de costos" title="Calculadora de costos" className={navIconClass}>
               <Calculator className="w-4 h-4" />

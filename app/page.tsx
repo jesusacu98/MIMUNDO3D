@@ -1,15 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin, Briefcase, KeyRound, Home as HomeIcon } from "lucide-react";
+import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, Mail, Phone, MapPin, ImageIcon } from "lucide-react";
 import TrackedLink from "@/components/TrackedLink";
 import AdminNavLink from "@/components/AdminNavLink";
 import { HOME_CATEGORIES } from "@/lib/homeCategories";
+import { getCategoryImage } from "@/lib/categoryImages";
+import { getFeaturedProducts } from "@/lib/featuredProducts";
+import ProductCarousel from "@/components/ProductCarousel";
 
-const CATEGORY_ICONS: Record<string, typeof Briefcase> = {
-  negocios: Briefcase,
-  llaveros: KeyRound,
-  hogar: HomeIcon,
-};
+// Los carruseles de destacados se actualizan sin nuevo deploy (como /catalogo).
+export const revalidate = 60;
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -44,7 +44,19 @@ const WHATSAPP_MESSAGE = encodeURIComponent(
 );
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`;
 
-export default function Home() {
+export default async function Home() {
+  const [categoryImages, featured] = await Promise.all([
+    Promise.all(HOME_CATEGORIES.map((c) => getCategoryImage(c.slug))),
+    getFeaturedProducts(),
+  ]);
+
+  const trending = featured.trending;
+
+  const carousels = [
+    { key: "novedades", title: "Novedades y nuevos productos", subtitle: "Lo último que hemos creado.", badge: "Nuevo", variant: "new" as const, products: featured.news },
+    { key: "promociones", title: "Promociones y descuentos", subtitle: "Aprovecha antes de que se acaben.", badge: "Promo", variant: "promo" as const, products: featured.promos },
+  ].filter((c) => c.products.length > 0);
+
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
       {/* Navbar */}
@@ -67,6 +79,23 @@ export default function Home() {
           </nav>
         </div>
       </header>
+
+      {/* Trending carousel (arriba de todo, antes del hero) */}
+      {trending.length > 0 && (
+        <section className="py-12 sm:py-16 bg-zinc-50 border-b border-zinc-200/80">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductCarousel
+              title="Tendencia"
+              subtitle="Lo más pedido del momento."
+              badge="Tendencia"
+              variant="trending"
+              products={trending}
+              fromQuery="desde=inicio"
+              autoScroll
+            />
+          </div>
+        </section>
+      )}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-16 sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-32 bg-white">
@@ -119,32 +148,53 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {HOME_CATEGORIES.map((category) => {
-              const Icon = CATEGORY_ICONS[category.slug];
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+            {HOME_CATEGORIES.map((category, index) => {
+              const image = categoryImages[index];
               return (
-                <div
-                  key={category.slug}
-                  className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 group flex flex-col"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-5 group-hover:bg-primary group-hover:text-white transition-all">
-                    <Icon className="w-6 h-6" />
+                <Link key={category.slug} href={`/categorias/${category.slug}`} className="group flex flex-col items-center text-center">
+                  <div className="relative w-full aspect-[2/1] overflow-hidden rounded-lg bg-zinc-100">
+                    {image ? (
+                      <Image
+                        src={image}
+                        alt={category.dbName}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-zinc-300">
+                        <ImageIcon className="w-10 h-10" />
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-bold text-zinc-950 mb-2">{category.dbName}</h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed mb-6 flex-grow">{category.description}</p>
-                  <Link
-                    href={`/categorias/${category.slug}`}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary-dark transition-colors cursor-pointer"
-                  >
+                  <h3 className="mt-6 text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950">{category.dbName}</h3>
+                  <span className="mt-6 inline-flex items-center justify-center px-8 py-3 rounded-lg bg-zinc-950 group-hover:bg-primary text-white text-sm font-medium uppercase tracking-wide transition-colors">
                     Ver más
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </div>
+                  </span>
+                </Link>
               );
             })}
           </div>
         </div>
       </section>
+
+      {/* Featured carousels (Tendencia / Novedades / Promociones) */}
+      {carousels.map((carousel, index) => (
+        <section key={carousel.key} className={`py-16 border-t border-zinc-200/80 ${index % 2 === 0 ? "bg-zinc-50" : "bg-white"}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductCarousel
+              title={carousel.title}
+              subtitle={carousel.subtitle}
+              badge={carousel.badge}
+              variant={carousel.variant}
+              autoScroll
+              products={carousel.products}
+              fromQuery="desde=inicio"
+            />
+          </div>
+        </section>
+      ))}
 
       {/* Services Section */}
       <section id="servicios" className="py-20 bg-zinc-50 border-y border-zinc-200/80 relative">

@@ -46,6 +46,41 @@ export interface Database {
         };
         Relationships: [];
       };
+      product_subcategories: {
+        Row: {
+          id: string;
+          category_id: string;
+          name: string;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          category_id: string;
+          name: string;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          category_id?: string;
+          name?: string;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_subcategories_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "product_categories";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       product_colors: {
         Row: {
           id: string;
@@ -79,12 +114,19 @@ export interface Database {
           price: number;
           // Costo de fabricación, admin-only — el catálogo público nunca lo selecciona.
           cost: number | null;
+          // Texto libre legado (schema_catalog_v3); ya no se usa, ver subcategory_id.
+          subcategory: string | null;
+          subcategory_id: string | null;
           is_starting_price: boolean;
           image_url: string;
           is_personalizable: boolean;
           has_business_info: boolean;
           has_character_option: boolean;
           is_active: boolean;
+          // Destacados del inicio: carruseles Tendencia / Novedades / Promociones.
+          is_trending: boolean;
+          is_new: boolean;
+          is_promo: boolean;
           display_order: number;
           created_at: string;
           updated_at: string;
@@ -96,12 +138,17 @@ export interface Database {
           description: string;
           price: number;
           cost?: number | null;
+          subcategory?: string | null;
+          subcategory_id?: string | null;
           is_starting_price?: boolean;
           image_url: string;
           is_personalizable?: boolean;
           has_business_info?: boolean;
           has_character_option?: boolean;
           is_active?: boolean;
+          is_trending?: boolean;
+          is_new?: boolean;
+          is_promo?: boolean;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -113,12 +160,17 @@ export interface Database {
           description?: string;
           price?: number;
           cost?: number | null;
+          subcategory?: string | null;
+          subcategory_id?: string | null;
           is_starting_price?: boolean;
           image_url?: string;
           is_personalizable?: boolean;
           has_business_info?: boolean;
           has_character_option?: boolean;
           is_active?: boolean;
+          is_trending?: boolean;
+          is_new?: boolean;
+          is_promo?: boolean;
           display_order?: number;
           created_at?: string;
           updated_at?: string;

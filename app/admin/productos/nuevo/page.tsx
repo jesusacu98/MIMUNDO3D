@@ -30,6 +30,11 @@ export default async function NuevoProductoPage({ searchParams }: PageProps) {
 
   const nextDisplayOrder = (maxOrderRow?.display_order ?? 0) + 1;
 
+  const { data: subcategoriesData } = await supabaseAdmin
+    .from('product_subcategories')
+    .select('id, name, category_id')
+    .order('display_order', { ascending: true });
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -41,6 +46,7 @@ export default async function NuevoProductoPage({ searchParams }: PageProps) {
 
         <ProductForm
           categories={categoriesData ?? []}
+          subcategories={subcategoriesData ?? []}
           action={createProduct}
           error={error}
           submitLabel="Crear producto"
@@ -48,6 +54,7 @@ export default async function NuevoProductoPage({ searchParams }: PageProps) {
             name: '',
             category_id: '',
             description: '',
+            subcategory_id: '',
             price: 0,
             cost: null,
             is_starting_price: true,
@@ -56,6 +63,9 @@ export default async function NuevoProductoPage({ searchParams }: PageProps) {
             has_business_info: false,
             has_character_option: false,
             is_active: true,
+            is_trending: false,
+            is_new: false,
+            is_promo: false,
             display_order: nextDisplayOrder,
           }}
         />

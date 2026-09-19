@@ -9,6 +9,12 @@ interface CategoryOption {
   name: string;
 }
 
+interface SubcategoryOption {
+  id: string;
+  name: string;
+  category_id: string;
+}
+
 interface ExtraImage {
   id: string;
   image_url: string;
@@ -18,6 +24,7 @@ interface ProductFormValues {
   name: string;
   category_id: string;
   description: string;
+  subcategory_id: string | null;
   price: number;
   cost: number | null;
   is_starting_price: boolean;
@@ -26,12 +33,16 @@ interface ProductFormValues {
   has_business_info: boolean;
   has_character_option: boolean;
   is_active: boolean;
+  is_trending: boolean;
+  is_new: boolean;
+  is_promo: boolean;
   display_order: number;
   extraImages?: ExtraImage[];
 }
 
 interface ProductFormProps {
   categories: CategoryOption[];
+  subcategories?: SubcategoryOption[];
   action: (formData: FormData) => void | Promise<void>;
   initialValues?: ProductFormValues;
   error?: string;
@@ -43,7 +54,10 @@ const inputClass =
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
 const checkboxRowClass = 'flex items-center gap-2 text-sm text-zinc-700';
 
-export default function ProductForm({ categories, action, initialValues, error, submitLabel }: ProductFormProps) {
+export default function ProductForm({ categories, subcategories = [], action, initialValues, error, submitLabel }: ProductFormProps) {
+  const [categoryId, setCategoryId] = useState(initialValues?.category_id ?? '');
+  const [subcategoryId, setSubcategoryId] = useState(initialValues?.subcategory_id ?? '');
+  const categorySubcategories = subcategories.filter((s) => s.category_id === categoryId);
   const [imageMode, setImageMode] = useState<'upload' | 'path'>(initialValues?.image_url ? 'path' : 'upload');
   const [fileName, setFileName] = useState<string | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -134,7 +148,11 @@ export default function ProductForm({ categories, action, initialValues, error, 
           id="category_id"
           name="category_id"
           required
-          defaultValue={initialValues?.category_id ?? ''}
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            setSubcategoryId('');
+          }}
           className={inputClass}
         >
           <option value="" disabled>
@@ -146,6 +164,40 @@ export default function ProductForm({ categories, action, initialValues, error, 
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor="subcategory_id" className={labelClass}>
+            Subcategoría
+          </label>
+          <a
+            href="/admin/subcategorias/nueva"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-primary hover:text-primary-dark whitespace-nowrap"
+          >
+            + Nueva subcategoría
+          </a>
+        </div>
+        <select
+          id="subcategory_id"
+          name="subcategory_id"
+          value={subcategoryId}
+          onChange={(e) => setSubcategoryId(e.target.value)}
+          disabled={!categoryId || categorySubcategories.length === 0}
+          className={inputClass}
+        >
+          <option value="">
+            {!categoryId ? 'Primero elige una categoría' : categorySubcategories.length === 0 ? 'Esta categoría no tiene subcategorías' : 'Sin subcategoría'}
+          </option>
+          {categorySubcategories.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-zinc-500 mt-1.5">Opcional. Aparece como filtro dentro de la categoría en el sitio.</p>
       </div>
 
       <div>
@@ -419,6 +471,23 @@ export default function ProductForm({ categories, action, initialValues, error, 
           />
           Visible en el catálogo público
         </label>
+      </div>
+
+      <div className="space-y-3 pt-2 border-t border-zinc-100">
+        <span className={labelClass}>Destacar en el inicio</span>
+        <label className={checkboxRowClass}>
+          <input type="checkbox" name="is_trending" defaultChecked={initialValues?.is_trending ?? false} className="w-4 h-4 accent-primary" />
+          Tendencia
+        </label>
+        <label className={checkboxRowClass}>
+          <input type="checkbox" name="is_new" defaultChecked={initialValues?.is_new ?? false} className="w-4 h-4 accent-primary" />
+          Novedad / nuevo producto
+        </label>
+        <label className={checkboxRowClass}>
+          <input type="checkbox" name="is_promo" defaultChecked={initialValues?.is_promo ?? false} className="w-4 h-4 accent-primary" />
+          Promoción / descuento
+        </label>
+        <p className="text-xs text-zinc-500">Aparece en el carrusel correspondiente de la página de inicio (sólo si además está visible en el catálogo).</p>
       </div>
 
       <SubmitButton className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer">

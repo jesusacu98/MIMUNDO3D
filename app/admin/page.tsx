@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Package, Tags, Calculator, ClipboardList, PiggyBank, QrCode, Users } from 'lucide-react';
+import { Package, Tags, Layers, Calculator, ClipboardList, PiggyBank, QrCode, Users } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -22,10 +22,11 @@ export default async function AdminPage() {
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const [{ count: productCount }, { count: categoryCount }, { count: clientCount }, { data: orderItemsData }, { data: investmentsData }] =
+  const [{ count: productCount }, { count: categoryCount }, { count: subcategoryCount }, { count: clientCount }, { data: orderItemsData }, { data: investmentsData }] =
     await Promise.all([
       supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase.from('product_categories').select('*', { count: 'exact', head: true }),
+      supabase.from('product_subcategories').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('clients').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('order_items').select('sale_price, cost'),
       supabaseAdmin.from('investments').select('cost'),
@@ -129,6 +130,17 @@ export default async function AdminPage() {
             </div>
             <p className="text-3xl font-extrabold text-zinc-950">{categoryCount ?? 0}</p>
             <p className="text-sm text-zinc-500">categorías — gestionar →</p>
+          </Link>
+
+          <Link
+            href="/admin/subcategorias"
+            className="block bg-white border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all"
+          >
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <Layers className="w-6 h-6" />
+            </div>
+            <p className="text-3xl font-extrabold text-zinc-950">{subcategoryCount ?? 0}</p>
+            <p className="text-sm text-zinc-500">subcategorías — gestionar →</p>
           </Link>
 
           <Link
