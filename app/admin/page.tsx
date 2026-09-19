@@ -4,7 +4,6 @@ import { Package, Tags, Layers, Calculator, ClipboardList, PiggyBank, QrCode, Us
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import AdminHeader from './AdminHeader';
 
 const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 const percent = new Intl.NumberFormat('es-MX', { style: 'percent', maximumFractionDigits: 1 });
@@ -50,8 +49,6 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <AdminHeader email={user.email ?? ''} />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-2">Panel de Administración</h1>
         <p className="text-zinc-600 mb-10 break-all">Bienvenido, {user.email}.</p>

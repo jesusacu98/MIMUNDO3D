@@ -4,7 +4,6 @@ import { Plus } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ORDER_STATUSES } from '@/lib/orderStatuses';
-import AdminHeader from '../AdminHeader';
 import PedidosBrowser from './PedidosBrowser';
 import { deleteOrder } from './actions';
 
@@ -105,8 +104,6 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <AdminHeader email={user.email ?? ''} />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>

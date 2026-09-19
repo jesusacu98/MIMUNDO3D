@@ -42,7 +42,8 @@ app/
     page.tsx                 Página de pago NFC — Client Component, fetch a la API propia
   admin/                     Panel de gestión interna, protegido por proxy.ts + verificación de rol por página (ver §4bis)
     page.tsx                 Dashboard: KPIs de negocio (inversión, ingresos, costos, ganancia, ROI) + accesos a cada módulo
-    AdminHeader.tsx           Header compartido (nav + logout) para todas las páginas de /admin
+    layout.tsx                Envuelve /admin con el menú lateral (sólo si hay sesión admin; /admin/login se ve sin menú)
+    AdminSidebar.tsx           Menú lateral con texto, agrupado (Operación / Catálogo / Herramientas), página activa resaltada; en celular es una barra superior con menú deslizable
     login/page.tsx            Login con Supabase Auth
     productos/                CRUD de productos del catálogo (crear/editar; borrar sólo vía is_active)
     categorias/                CRUD de categorías (crear/editar/borrar)
