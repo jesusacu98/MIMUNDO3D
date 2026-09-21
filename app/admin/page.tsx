@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Package, Tags, Layers, Calculator, ClipboardList, PiggyBank, QrCode, Users } from 'lucide-react';
+import { GalleryHorizontal, Package, Tags, Layers, Calculator, ClipboardList, PiggyBank, QrCode, Users } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -138,6 +138,17 @@ export default async function AdminPage() {
             </div>
             <p className="text-3xl font-extrabold text-zinc-950">{subcategoryCount ?? 0}</p>
             <p className="text-sm text-zinc-500">subcategorías — gestionar →</p>
+          </Link>
+
+          <Link
+            href="/admin/banners"
+            className="block bg-white border border-zinc-200/60 rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all"
+          >
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <GalleryHorizontal className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-bold text-zinc-950">Banners</p>
+            <p className="text-sm text-zinc-500">sube y asigna banners del sitio →</p>
           </Link>
 
           <Link

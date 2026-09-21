@@ -6,6 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Flame, Sparkles, Tag } from 'luc
 import type { Product } from '@/app/catalogo/types';
 import { formatPrice } from '@/app/catalogo/types';
 import ProductThumbnail from '@/app/catalogo/ProductThumbnail';
+import Reveal from '@/components/Reveal';
 
 type Variant = 'trending' | 'new' | 'promo';
 
@@ -22,13 +23,34 @@ interface ProductCarouselProps {
   autoScroll?: boolean;
 }
 
-const AUTO_SCROLL_MS = 3500;
+const AUTO_SCROLL_MS = 2500;
 const PAUSE_AFTER_INTERACTION_MS = 6000;
 
-const VARIANT_STYLES: Record<Variant, { badge: string; icon: typeof Flame }> = {
-  trending: { badge: 'bg-gradient-to-r from-orange-500 to-rose-500 shadow-orange-500/30', icon: Flame },
-  new: { badge: 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30', icon: Sparkles },
-  promo: { badge: 'bg-gradient-to-r from-primary to-primary-dark shadow-primary/30', icon: Tag },
+const VARIANT_STYLES: Record<
+  Variant,
+  { badge: string; icon: typeof Flame; eyebrow: string; eyebrowClass: string; accent: string }
+> = {
+  trending: {
+    badge: 'bg-gradient-to-r from-orange-500 to-rose-500 shadow-orange-500/30',
+    icon: Flame,
+    eyebrow: 'En alza',
+    eyebrowClass: 'bg-orange-500/10 text-orange-600 ring-orange-500/20',
+    accent: 'from-orange-500 to-rose-500',
+  },
+  new: {
+    badge: 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30',
+    icon: Sparkles,
+    eyebrow: 'Recién llegado',
+    eyebrowClass: 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20',
+    accent: 'from-emerald-500 to-teal-500',
+  },
+  promo: {
+    badge: 'bg-gradient-to-r from-primary to-primary-dark shadow-primary/30',
+    icon: Tag,
+    eyebrow: 'Ofertas',
+    eyebrowClass: 'bg-primary/10 text-primary-dark ring-primary/20',
+    accent: 'from-primary to-primary-dark',
+  },
 };
 
 export default function ProductCarousel({ title, subtitle, products, badge, variant, fromQuery, autoScroll = false }: ProductCarouselProps) {
@@ -83,7 +105,7 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
       observer.disconnect();
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     };
-  }, [autoScroll, products.length]);
+  }, [autoScroll, products.length, activeIndex]); // activeIndex: reinicia el temporizador en sincronía con la barra de progreso
 
   if (products.length === 0) return null;
 
@@ -111,21 +133,36 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
   const style = variant ? VARIANT_STYLES[variant] : undefined;
   const BadgeIcon = style?.icon;
 
+  // La última palabra del título lleva el degradado de acento.
+  const words = title.trim().split(/\s+/);
+  const titleLast = words.pop() ?? '';
+  const titleLead = words.join(' ');
+
   const arrowClass =
     'w-10 h-10 rounded-full bg-white border border-zinc-200 shadow-sm text-zinc-600 hover:text-white hover:bg-primary hover:border-primary flex items-center justify-center transition-all active:scale-95 cursor-pointer';
 
   return (
-    <div>
+    <div className="carousel-root">
+      <Reveal>
       <div className="flex items-end justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          {BadgeIcon && (
-            <span className={`hidden sm:flex w-12 h-12 rounded-2xl text-white items-center justify-center shadow-lg ${style?.badge}`}>
-              <BadgeIcon className="w-6 h-6" />
+        <div className="min-w-0">
+          {style && BadgeIcon && (
+            <span
+              className={`inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.14em] ring-1 ring-inset ${style.eyebrowClass}`}
+            >
+              <BadgeIcon className="w-3.5 h-3.5" />
+              {style.eyebrow}
             </span>
           )}
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950">{title}</h2>
-            {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-[1.05] text-zinc-950">
+            {titleLead && `${titleLead} `}
+            <span className={`bg-gradient-to-r bg-clip-text text-transparent ${style?.accent ?? 'from-primary to-primary-dark'}`}>
+              {titleLast}
+            </span>
+          </h2>
+          <div className="mt-3 flex items-center gap-3">
+            <span className={`h-1 w-10 shrink-0 rounded-full bg-gradient-to-r ${style?.accent ?? 'from-primary to-primary-dark'}`} />
+            {subtitle && <p className="text-sm sm:text-base text-zinc-500">{subtitle}</p>}
           </div>
         </div>
         <div className="hidden sm:flex items-center gap-2 shrink-0">
@@ -137,7 +174,9 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
           </button>
         </div>
       </div>
+      </Reveal>
 
+      <Reveal delay={120}>
       <div
         ref={trackRef}
         onScroll={handleScroll}
@@ -156,9 +195,9 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
           <Link
             key={product.id}
             href={`/catalogo/${product.id}${fromQuery ? `?${fromQuery}` : ''}`}
-            className="snap-start shrink-0 w-64 sm:w-72 bg-white border border-zinc-200/70 rounded-3xl overflow-hidden shadow-sm hover:-translate-y-1.5 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-300 group flex flex-col cursor-pointer"
+            className="snap-start shrink-0 w-64 sm:w-72 bg-white p-2 border border-zinc-200/70 rounded-[1.75rem] overflow-hidden shadow-md shadow-zinc-900/10 ring-1 ring-black/5 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-300 group flex flex-col cursor-pointer"
           >
-            <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden">
+            <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden rounded-3xl">
               <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-110">
                 <ProductThumbnail src={product.image} alt={product.name} sizes="288px" />
               </div>
@@ -174,7 +213,7 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
                 </span>
               )}
             </div>
-            <div className="p-5 flex flex-col flex-grow">
+            <div className="px-3 pt-4 pb-3 flex flex-col flex-grow">
               {product.category && (
                 <span className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-1">{product.category}</span>
               )}
@@ -190,6 +229,7 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
           </Link>
         ))}
       </div>
+      </Reveal>
 
       {products.length > 1 && (
         <div className="flex justify-center items-center gap-1.5 mt-2" role="tablist" aria-label="Posición del carrusel">
@@ -201,10 +241,18 @@ export default function ProductCarousel({ title, subtitle, products, badge, vari
               aria-selected={i === activeIndex}
               aria-label={`Ir al producto ${i + 1}`}
               onClick={() => scrollToIndex(i)}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                i === activeIndex ? 'w-6 bg-primary' : 'w-1.5 bg-zinc-300 hover:bg-zinc-400'
+              className={`relative h-1.5 rounded-full overflow-hidden transition-all duration-300 cursor-pointer ${
+                i === activeIndex ? 'w-8 bg-primary/20' : 'w-1.5 bg-zinc-300 hover:bg-zinc-400'
               }`}
-            />
+            >
+              {i === activeIndex && (
+                <span
+                  key={activeIndex}
+                  className={`absolute inset-0 rounded-full bg-primary origin-left ${autoScroll ? 'dot-progress' : ''}`}
+                  style={autoScroll ? { animationDuration: `${AUTO_SCROLL_MS}ms` } : undefined}
+                />
+              )}
+            </button>
           ))}
         </div>
       )}

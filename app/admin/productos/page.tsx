@@ -1,11 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import ProductThumb from './ProductThumb';
-
-const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+import ProductsList from './ProductsList';
 
 export default async function AdminProductosPage() {
   const supabaseAuth = await createServerSupabaseClient();
@@ -17,15 +15,15 @@ export default async function AdminProductosPage() {
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
+  const [{ data: categoriesData }, { data: subcategoriesData }, { data: productsData }] = await Promise.all([
     supabaseAdmin.from('product_categories').select('id, name').order('display_order', { ascending: true }),
+    supabaseAdmin.from('product_subcategories').select('id, name, category_id').order('display_order', { ascending: true }),
     supabaseAdmin
       .from('products')
-      .select('id, category_id, name, price, cost, is_starting_price, image_url, is_active, display_order')
+      .select('id, category_id, subcategory_id, name, price, cost, is_starting_price, image_url, is_active, display_order')
       .order('display_order', { ascending: true }),
   ]);
 
-  const categoryNameById = new Map((categoriesData ?? []).map((c) => [c.id, c.name]));
   const products = productsData ?? [];
 
   return (
@@ -45,98 +43,7 @@ export default async function AdminProductosPage() {
           </Link>
         </div>
 
-        {/* Mobile: tarjetas apiladas, toda la fila es tocable */}
-        <div className="sm:hidden bg-white border border-zinc-200/60 rounded-2xl overflow-hidden divide-y divide-zinc-100">
-          {products.map((product) => (
-            <Link
-              key={product.id}
-              href={`/admin/productos/${product.id}/editar`}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 active:bg-zinc-50"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <ProductThumb src={product.image_url} alt={product.name} size={44} />
-                <div className="min-w-0">
-                  <p className="font-medium text-zinc-900 truncate">{product.name}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                    {categoryNameById.get(product.category_id) ?? '—'} · {product.is_starting_price ? 'Desde ' : ''}$
-                    {product.price} MXN
-                    {product.cost != null && ` · Costo ${currency.format(product.cost)}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
-                    product.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'
-                  }`}
-                >
-                  {product.is_active ? 'Activo' : 'Oculto'}
-                </span>
-                <Pencil className="w-4 h-4 text-primary" />
-              </div>
-            </Link>
-          ))}
-          {products.length === 0 && (
-            <p className="px-4 py-10 text-center text-zinc-500 text-sm">Todavía no hay productos.</p>
-          )}
-        </div>
-
-        {/* Desktop/tablet: tabla completa */}
-        <div className="hidden sm:block bg-white border border-zinc-200/60 rounded-2xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
-            <thead className="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="px-5 py-3" />
-                <th className="text-left px-5 py-3 font-semibold">Producto</th>
-                <th className="text-left px-5 py-3 font-semibold">Categoría</th>
-                <th className="text-left px-5 py-3 font-semibold">Precio</th>
-                <th className="text-left px-5 py-3 font-semibold">Costo</th>
-                <th className="text-left px-5 py-3 font-semibold">Estado</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-zinc-50/60">
-                  <td className="pl-5 py-3">
-                    <ProductThumb src={product.image_url} alt={product.name} size={40} />
-                  </td>
-                  <td className="px-5 py-3 font-medium text-zinc-900">{product.name}</td>
-                  <td className="px-5 py-3 text-zinc-600">{categoryNameById.get(product.category_id) ?? '—'}</td>
-                  <td className="px-5 py-3 text-zinc-600">
-                    {product.is_starting_price ? 'Desde ' : ''}${product.price} MXN
-                  </td>
-                  <td className="px-5 py-3 text-zinc-600">{product.cost != null ? currency.format(product.cost) : '—'}</td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        product.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'
-                      }`}
-                    >
-                      {product.is_active ? 'Activo' : 'Oculto'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/admin/productos/${product.id}/editar`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-dark"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Editar
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {products.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-zinc-500">
-                    Todavía no hay productos.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ProductsList products={products} categories={categoriesData ?? []} subcategories={subcategoriesData ?? []} />
       </main>
     </div>
   );

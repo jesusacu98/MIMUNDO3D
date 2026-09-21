@@ -201,17 +201,18 @@ export default function CategoryProducts({ products, subcategoryOrder, categoryS
       </div>
 
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filtered.map((product) => (
+        <div key={tipo} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filtered.map((product, index) => (
             <Link
               key={product.id}
               href={`/catalogo/${product.id}?${detailQuery.toString()}`}
-              className="bg-white border border-zinc-200/60 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
+              style={{ '--delay': `${Math.min(index, 11) * 50}ms` } as React.CSSProperties}
+              className="animate-fade-up bg-white p-2 border border-zinc-200/60 rounded-3xl overflow-hidden shadow-md shadow-zinc-900/10 ring-1 ring-black/5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
             >
-              <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden">
+              <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden rounded-2xl">
                 <ProductThumbnail src={product.image} alt={product.name} />
               </div>
-              <div className="p-5 flex flex-col flex-grow">
+              <div className="px-3 pt-4 pb-3 flex flex-col flex-grow">
                 <h3 className="text-md font-bold text-zinc-950 mb-2 line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
                 <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed mb-4 flex-grow">{product.description}</p>
                 <div className="flex items-center justify-between pt-3 border-t border-zinc-100">

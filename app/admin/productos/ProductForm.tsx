@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ImageOff, Plus, X } from 'lucide-react';
+import { Download, ImageOff, Plus, X } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 
 interface CategoryOption {
@@ -53,6 +53,35 @@ const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
 const checkboxRowClass = 'flex items-center gap-2 text-sm text-zinc-700';
+
+function fileNameFromUrl(url: string) {
+  const last = url.split(/[?#]/)[0].split('/').pop() || 'imagen';
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+}
+
+// Descarga vía fetch → blob para que funcione también con imágenes de Supabase Storage
+// (el atributo `download` de <a> se ignora en URLs de otro origen). Si el fetch falla
+// (p. ej. CORS), abre la imagen en otra pestaña para guardarla manualmente.
+async function downloadImage(url: string, name?: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const blobUrl = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = name ?? fileNameFromUrl(url);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch {
+    window.open(url, '_blank', 'noopener');
+  }
+}
 
 export default function ProductForm({ categories, subcategories = [], action, initialValues, error, submitLabel }: ProductFormProps) {
   const [categoryId, setCategoryId] = useState(initialValues?.category_id ?? '');
@@ -117,6 +146,20 @@ export default function ProductForm({ categories, subcategories = [], action, in
   };
 
   const previewSrc = imageMode === 'upload' ? filePreviewUrl ?? initialValues?.image_url : pathValue;
+  const mainDownloadName = imageMode === 'upload' && filePreviewUrl ? fileName ?? undefined : undefined;
+
+  const downloadAll = async () => {
+    const items: { url: string; name?: string }[] = [];
+    if (previewSrc && !previewError) items.push({ url: previewSrc, name: mainDownloadName });
+    visibleExtraImages.forEach((img) => items.push({ url: img.image_url }));
+    newExtraPreviews.forEach((p) => items.push({ url: p.url, name: p.file.name }));
+    for (const item of items) {
+      await downloadImage(item.url, item.name);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  };
+  const downloadableCount =
+    (previewSrc && !previewError ? 1 : 0) + visibleExtraImages.length + newExtraPreviews.length;
 
   return (
     <>
@@ -307,6 +350,16 @@ export default function ProductForm({ categories, subcategories = [], action, in
                 </p>
               </>
             )}
+            {previewSrc && !previewError && (
+              <button
+                type="button"
+                onClick={() => downloadImage(previewSrc, mainDownloadName)}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-primary cursor-pointer transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Descargar imagen
+              </button>
+            )}
           </div>
         </div>
 
@@ -327,6 +380,14 @@ export default function ProductForm({ categories, subcategories = [], action, in
                 <img src={img.image_url} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
+                  onClick={() => downloadImage(img.image_url)}
+                  aria-label="Descargar imagen"
+                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <Download className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setRemovedExtraIds((prev) => [...prev, img.id])}
                   aria-label="Quitar imagen"
                   className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
@@ -339,6 +400,14 @@ export default function ProductForm({ categories, subcategories = [], action, in
               <div key={p.url} className="relative w-20 h-20 rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => downloadImage(p.url, p.file.name)}
+                  aria-label="Descargar imagen"
+                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <Download className="w-3 h-3" />
+                </button>
                 <button
                   type="button"
                   onClick={() => removeNewExtraFile(i)}
@@ -356,6 +425,7 @@ export default function ProductForm({ categories, subcategories = [], action, in
           <input key={id} type="hidden" name="remove_image_ids" value={id} />
         ))}
 
+        <div className="flex flex-wrap items-center gap-3">
         <label
           htmlFor="extra_image_files"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-zinc-300 text-xs font-bold text-zinc-600 hover:border-primary hover:text-primary cursor-pointer transition-colors"
@@ -373,6 +443,17 @@ export default function ProductForm({ categories, subcategories = [], action, in
           onChange={handleExtraFilesChange}
           className="hidden"
         />
+        {downloadableCount > 1 && (
+          <button
+            type="button"
+            onClick={downloadAll}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-700 cursor-pointer transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Descargar todas ({downloadableCount})
+          </button>
+        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

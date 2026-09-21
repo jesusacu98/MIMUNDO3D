@@ -96,3 +96,52 @@ export async function uploadClientLogo(file: File): Promise<{ url: string } | { 
 export async function deleteClientLogoIfManaged(logoUrl: string | null | undefined): Promise<void> {
   await deleteCatalogImageIfManaged(logoUrl);
 }
+
+// Banners administrables: bucket público propio (imagenes_sitio), carpeta banners/.
+// Los archivos subidos a mano a la raíz del bucket (ej. la portada de Negocios) no se tocan.
+const SITE_IMAGES_BUCKET = 'imagenes_sitio';
+const BANNER_PREFIX = 'banners/';
+
+export async function uploadBannerImage(file: File): Promise<{ url: string } | { error: string }> {
+  if (!file.type.startsWith('image/')) {
+    return { error: 'El banner debe ser una imagen.' };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { error: 'La imagen del banner no puede pesar más de 10MB.' };
+  }
+
+  const objectPath = BANNER_PREFIX + slugifyFileName(file.name);
+
+  const { error } = await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).upload(objectPath, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    return { error: 'No se pudo subir la imagen del banner: ' + error.message };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
+
+  return { url: publicUrl };
+}
+
+// Borra la imagen sólo si la subió este admin (banners/…), ya sea en imagenes_sitio o en
+// catalogos (donde se guardaban las primeras). Archivos subidos a mano no se tocan.
+export async function deleteBannerImageIfManaged(imageUrl: string | null | undefined): Promise<void> {
+  if (!imageUrl) return;
+
+  for (const bucket of [SITE_IMAGES_BUCKET, CATALOG_BUCKET]) {
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const markerIndex = imageUrl.indexOf(marker);
+    if (markerIndex === -1) continue;
+
+    const objectPath = decodeURIComponent(imageUrl.slice(markerIndex + marker.length));
+    if (!objectPath.startsWith(BANNER_PREFIX)) return;
+
+    await supabaseAdmin.storage.from(bucket).remove([objectPath]);
+    return;
+  }
+}

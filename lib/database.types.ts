@@ -46,6 +46,81 @@ export interface Database {
         };
         Relationships: [];
       };
+      banners: {
+        Row: {
+          id: string;
+          title: string;
+          image_url: string;
+          mobile_image_url: string | null;
+          link_url: string | null;
+          display_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          image_url: string;
+          mobile_image_url?: string | null;
+          link_url?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          image_url?: string;
+          mobile_image_url?: string | null;
+          link_url?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      banner_placements: {
+        Row: {
+          id: string;
+          banner_id: string;
+          placement: 'home' | 'catalog' | 'home_category' | 'category_page';
+          category_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          banner_id: string;
+          placement: 'home' | 'catalog' | 'home_category' | 'category_page';
+          category_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          banner_id?: string;
+          placement?: 'home' | 'catalog' | 'home_category' | 'category_page';
+          category_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "banner_placements_banner_id_fkey";
+            columns: ["banner_id"];
+            isOneToOne: false;
+            referencedRelation: "banners";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "banner_placements_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "product_categories";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       product_subcategories: {
         Row: {
           id: string;

@@ -89,7 +89,7 @@ export default async function ProductoDetalle({ params, searchParams }: PageProp
         <ProductDetailClient product={productForDetail} backHref={backHref} backLabel={backLabel} />
         {similarProducts.length > 0 && (
           <section className="mt-16 pt-12 border-t border-zinc-200">
-            <ProductCarousel title="Productos similares" products={similarProducts} fromQuery={fromQuery} />
+            <ProductCarousel title="Productos similares" products={similarProducts} fromQuery={fromQuery} autoScroll />
           </section>
         )}
       </main>

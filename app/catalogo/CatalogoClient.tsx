@@ -9,15 +9,18 @@ import { formatPrice } from './types';
 import ProductThumbnail from './ProductThumbnail';
 import CatalogHeader from './CatalogHeader';
 import CatalogFooter from './CatalogFooter';
+import BannerSlider from '@/components/BannerSlider';
+import type { Banner } from '@/lib/banners';
 
 export type { Product, ColorOption };
 
 interface CatalogoClientProps {
   products: Product[];
   categoryNames: string[];
+  banners?: Banner[];
 }
 
-export default function CatalogoClient({ products, categoryNames }: CatalogoClientProps) {
+export default function CatalogoClient({ products, categoryNames, banners = [] }: CatalogoClientProps) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
 
@@ -44,6 +47,11 @@ export default function CatalogoClient({ products, categoryNames }: CatalogoClie
 
       {/* Hero Header */}
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">
+        {banners.length > 0 && (
+          <div className="mb-10">
+            <BannerSlider banners={banners} />
+          </div>
+        )}
         <div className="text-left mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mb-3">
             Nuestro Catálogo
@@ -89,17 +97,18 @@ export default function CatalogoClient({ products, categoryNames }: CatalogoClie
 
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
+          <div key={selectedCategory} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredProducts.map((product, index) => (
               <Link
                 key={product.id}
                 href={`/catalogo/${product.id}`}
-                className="bg-white border border-zinc-200/60 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
+                style={{ '--delay': `${Math.min(index, 11) * 50}ms` } as React.CSSProperties}
+                className="animate-fade-up bg-white p-2 border border-zinc-200/60 rounded-3xl overflow-hidden shadow-md shadow-zinc-900/10 ring-1 ring-black/5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all group flex flex-col h-full cursor-pointer"
               >
-                <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden">
+                <div className="aspect-square w-full bg-zinc-50 relative overflow-hidden rounded-2xl">
                   <ProductThumbnail src={product.image} alt={product.name} />
                 </div>
-                <div className="p-5 flex flex-col flex-grow">
+                <div className="px-3 pt-4 pb-3 flex flex-col flex-grow">
                   <span className="text-xs text-primary font-semibold mb-1 uppercase tracking-wider">{product.category}</span>
                   <h3 className="text-md font-bold text-zinc-950 mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                     {product.name}

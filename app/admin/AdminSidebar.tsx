@@ -8,6 +8,7 @@ import {
   Calculator,
   ClipboardList,
   ExternalLink,
+  GalleryHorizontal,
   Layers,
   LayoutDashboard,
   LayoutGrid,
@@ -50,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/productos', label: 'Productos', icon: Package },
       { href: '/admin/categorias', label: 'Categorías', icon: Tags },
       { href: '/admin/subcategorias', label: 'Subcategorías', icon: Layers },
+      { href: '/admin/banners', label: 'Banners', icon: GalleryHorizontal },
     ],
   },
   {

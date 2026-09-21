@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { HOME_CATEGORIES } from '@/lib/homeCategories';
+import { getBanners } from '@/lib/banners';
+import BannerSlider from '@/components/BannerSlider';
 import CatalogHeader from '../../catalogo/CatalogHeader';
 import CatalogFooter from '../../catalogo/CatalogFooter';
 import CategoryProducts, { type CategoryProduct } from './CategoryProducts';
@@ -24,6 +26,8 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
     .select('id')
     .eq('name', homeCategory.dbName)
     .maybeSingle();
+
+  const banners = categoryRow ? (await getBanners('category_page')).filter((b) => b.categoryIds.includes(categoryRow.id)) : [];
 
   const { data: subcategoriesData } = categoryRow
     ? await supabase
@@ -66,6 +70,11 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
       <CatalogHeader />
 
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">
+        {banners.length > 0 && (
+          <div className="mb-10">
+            <BannerSlider banners={banners} />
+          </div>
+        )}
         <div className="text-left mb-10">
           {homeCategory.headline && (
             <span className="text-xs font-bold text-primary uppercase tracking-wider">{homeCategory.dbName}</span>

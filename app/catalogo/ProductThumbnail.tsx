@@ -14,6 +14,7 @@ export default function ProductThumbnail({
   sizes?: string;
 }) {
   const [errored, setErrored] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (errored) {
     return (
@@ -28,5 +29,22 @@ export default function ProductThumbnail({
     );
   }
 
-  return <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" onError={() => setErrored(true)} />;
+  return (
+    <>
+      {!loaded && <div className="absolute inset-0 animate-shimmer" />}
+      <Image
+        ref={(img) => {
+          // Si la imagen ya estaba en caché antes de hidratar, onLoad no se dispara.
+          if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+        }}
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        className={`object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setErrored(true)}
+      />
+    </>
+  );
 }
