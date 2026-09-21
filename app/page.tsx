@@ -80,7 +80,7 @@ export default async function Home() {
       )}
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-16 sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-32 bg-white">
+      <section className="relative overflow-hidden pt-20 pb-16 sm:pt-28 sm:pb-24 lg:pt-36 lg:pb-32 bg-zinc-50">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="absolute top-20 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10" />
         
@@ -127,7 +127,7 @@ export default async function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-20 bg-white relative">
+      <section className="py-20 bg-white relative border-t border-zinc-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
           <div className="text-center max-w-3xl mx-auto mb-16">
