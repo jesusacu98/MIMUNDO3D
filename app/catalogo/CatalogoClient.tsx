@@ -7,7 +7,7 @@ import { event } from '@/lib/gtag';
 import type { Product, ColorOption } from './types';
 import { formatPrice } from './types';
 import ProductThumbnail from './ProductThumbnail';
-import CatalogHeader from './CatalogHeader';
+import SiteHeader from '@/components/SiteHeader';
 import CatalogFooter from './CatalogFooter';
 import BannerSlider from '@/components/BannerSlider';
 import type { Banner } from '@/lib/banners';
@@ -43,7 +43,7 @@ export default function CatalogoClient({ products, categoryNames, banners = [] }
 
   return (
     <div className="flex flex-col min-h-screen min-w-0 bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
-      <CatalogHeader />
+      <SiteHeader />
 
       {/* Hero Header */}
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">

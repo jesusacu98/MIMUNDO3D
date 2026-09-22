@@ -14,7 +14,7 @@ npm run build   # build de producción — correr antes de dar por terminado cua
 npm run lint    # eslint (eslint-config-next)
 ```
 
-No hay test runner configurado. Los scripts en `scripts/` (`seed.js`, `test-query.js`, `test-query-admin.js`) son utilidades manuales contra Supabase, no pruebas automatizadas — se corren con `node scripts/<archivo>.js` y requieren variables de entorno en `.env.local`.
+No hay test runner configurado. Los scripts en `scripts/` (`seed.js`, `test-query.js`, `test-query-admin.js`) son utilidades manuales contra Supabase, no pruebas automatizadas — se corren con `node scripts/<archivo>.js` y requieren variables de entorno en `.env`.
 
 ## Stack
 
@@ -27,7 +27,7 @@ Antes de escribir código nuevo, revisar `node_modules/next/dist/docs/` (ver [AG
 - **`params` y `searchParams` son `Promise`.** En Server Components / Route Handlers: `const { x } = await params`. En Client Components no se puede usar `await` de nivel superior — usar el hook `use()` de React, como en [app/pago/[client_id]/page.tsx](app/pago/[client_id]/page.tsx).
 - **`'use client'`** es obligatorio en cualquier componente que use hooks (`useState`, `useEffect`, `use`) o APIs del navegador (`navigator.clipboard`).
 - **`middleware.ts` está deprecado, se llama `proxy.ts`** (función exportada `proxy`, no `middleware`). Ver [proxy.ts](proxy.ts).
-- **`cookies()` fuerza renderizado dinámico.** Si un Server Component público (ej. `/`, `/catalogo`) necesita saber si hay sesión, no lo hagas leyendo cookies ahí — rompe el prerender estático/ISR. Usar un Client Component que consulte la sesión (ver [components/AdminNavLink.tsx](components/AdminNavLink.tsx)).
+- **`cookies()` fuerza renderizado dinámico.** Si un Server Component público (ej. `/`, `/catalogo`) necesita saber si hay sesión, no lo hagas leyendo cookies ahí — rompe el prerender estático/ISR. Usar un Client Component que consulte la sesión (ver `useIsAdmin()` en [components/SiteHeader.tsx](components/SiteHeader.tsx)).
 
 ## Convenciones del proyecto
 
@@ -42,7 +42,7 @@ Antes de escribir código nuevo, revisar `node_modules/next/dist/docs/` (ver [AG
 - `lib/supabaseAdmin.ts` — service role key (`SUPABASE_SERVICE_ROLE_KEY`), bypassa RLS. Se usa en Route Handlers (`app/api/pago/[client_id]/route.ts`) **y** en Server Actions/Server Components dentro de `/admin` (ej. `app/admin/productos/actions.ts`), ya que esa área está protegida por `proxy.ts` + verificación de rol en cada página. **Nunca** importar este archivo desde un Client Component ni exponer esa clave al navegador.
 - `lib/supabase/server.ts` y `lib/supabase/browser.ts` — clientes con sesión de auth basada en cookies (`@supabase/ssr`), para el login/rol de `/admin`. `lib/supabase/middleware.ts` es el helper que usa `proxy.ts` para refrescar la sesión en cada request.
 
-Variables de entorno esperadas en `.env.local` (no está en el repo, ver `.gitignore`):
+Variables de entorno: los valores reales van en **`.env`** (no está en el repo, ver `.gitignore`). **`.env.example`** sí está en el repo y lista los nombres de todas las variables (sin valores) — al agregar una variable nueva, agregarla ahí también. Variables esperadas:
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
@@ -50,7 +50,15 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_GA_MEASUREMENT_ID=
 ```
 
+El chat de ideas (`/ideas`) **no** se configura con variables de entorno — proveedor de IA, modelo, límites de uso y la propia llave de Anthropic se administran desde `/admin/ideas/configuracion` (ver más abajo).
+
 Si se modifica el esquema de las tablas en Supabase, actualizar a mano `lib/database.types.ts` (no se genera automáticamente en este proyecto). Los `CREATE TABLE`/seeds viven en `supabase/*.sql` (correr manualmente en el SQL Editor de Supabase — no hay CLI/migraciones automatizadas).
+
+## Chat de ideas (`/ideas`)
+
+Chat con IA para clientes indecisos: sugiere ideas de producto (cruzadas con el catálogo vía una herramienta de sólo lectura), las guardan en "Mi cotización" y la mandan por WhatsApp como un **enlace** (`/cotizacion/<token>`, sin vencimiento, tabla `idea_quotes`; si falla se manda la lista completa como texto). **No crea `orders`** (las cotizaciones se levantan a mano). Todo va detrás de la interfaz `LlmProvider` (`lib/ideas/llm/`): para cambiar de LLM se agrega un archivo y un caso en `llm/index.ts`, nada más.
+
+**Configuración editable desde `/admin/ideas/configuracion`** (tabla `idea_settings`, no variables de entorno — decisión explícita del dueño del negocio, ver `lib/ideas/settings.ts`): proveedor de IA, modelo, si usa el catálogo, los dos límites de uso y la propia `ANTHROPIC_API_KEY`. Aplica al instante (caché de ~20s), sin redeploy. Sin llave guardada responde la simulación (`llm/mock.ts`). **La llave nunca se manda al navegador** — el formulario del admin sólo muestra si hay una configurada y sus últimos 4 caracteres; dejar el campo en blanco al guardar no la borra. Detalle en [ARQUITECTURA.md](./ARQUITECTURA.md) §12; las tablas viven en `supabase/schema_ideas.sql` (correr a mano).
 
 ## Auth y admin (`/admin`)
 

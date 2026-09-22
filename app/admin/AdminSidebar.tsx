@@ -17,6 +17,8 @@ import {
   Package,
   PiggyBank,
   QrCode,
+  Settings,
+  Sparkles,
   Tags,
   Users,
   X,
@@ -42,6 +44,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/pedidos', label: 'Pedidos', icon: ClipboardList },
       { href: '/admin/clientes', label: 'Clientes', icon: Users },
+      { href: '/admin/ideas', label: 'Ideas (chat IA)', icon: Sparkles },
+      { href: '/admin/ideas/configuracion', label: 'Configuración IA', icon: Settings },
       { href: '/admin/inversion', label: 'Inversión', icon: PiggyBank },
     ],
   },
@@ -65,8 +69,18 @@ const NAV_GROUPS: NavGroup[] = [
 
 const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
-function isActive(pathname: string, href: string) {
+function matches(pathname: string, href: string) {
   return href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(href + '/');
+}
+
+// Con rutas anidadas (ej. /admin/ideas y /admin/ideas/configuracion) más de un ítem puede calzar
+// por prefijo; gana el href más específico (el más largo), no simplemente "el primero que calce".
+function bestMatchHref(pathname: string): string | null {
+  let best: string | null = null;
+  for (const item of ALL_ITEMS) {
+    if (matches(pathname, item.href) && (!best || item.href.length > best.length)) best = item.href;
+  }
+  return best;
 }
 
 interface AdminSidebarProps {
@@ -90,7 +104,7 @@ function NavContent({ email, signOutAction, pathname }: AdminSidebarProps & { pa
             {group.title && <p className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">{group.title}</p>}
             <ul className="space-y-1">
               {group.items.map((item) => {
-                const active = isActive(pathname, item.href);
+                const active = item.href === bestMatchHref(pathname);
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>
@@ -169,7 +183,7 @@ export default function AdminSidebar({ email, signOutAction }: AdminSidebarProps
     };
   }, [open]);
 
-  const currentLabel = ALL_ITEMS.find((item) => isActive(pathname, item.href))?.label ?? 'Administración';
+  const currentLabel = ALL_ITEMS.find((item) => item.href === bestMatchHref(pathname))?.label ?? 'Administración';
 
   return (
     <>

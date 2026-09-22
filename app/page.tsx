@@ -1,14 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
-import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, ImageIcon } from "lucide-react";
+import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, ImageIcon, Sparkles } from "lucide-react";
 import CatalogFooter from "@/app/catalogo/CatalogFooter";
-import AdminNavLink from "@/components/AdminNavLink";
+import SiteHeader from "@/components/SiteHeader";
 import { HOME_CATEGORIES } from "@/lib/homeCategories";
 import { getFeaturedProducts } from "@/lib/featuredProducts";
 import ProductCarousel from "@/components/ProductCarousel";
 import Reveal from "@/components/Reveal";
 import BannerSlider from "@/components/BannerSlider";
 import { getBanners } from "@/lib/banners";
+import { EXAMPLE_PROMPTS, ideasHrefFor } from "@/lib/ideas/examples";
 import { supabase } from "@/lib/supabaseClient";
 
 // Los carruseles de destacados se actualizan sin nuevo deploy (como /catalogo).
@@ -32,26 +32,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-zinc-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <Image src="/logo.png" alt="MIMUNDO3D" width={1024} height={161} className="h-6 sm:h-8 w-auto shrink" priority />
-          </div>
-          <nav className="flex items-center gap-3 sm:gap-6 shrink-0">
-            <Link href="/" className="text-sm font-medium text-primary transition-colors">
-              Inicio
-            </Link>
-            <Link
-              href="/catalogo"
-              className="btn-shine inline-flex items-center justify-center px-3 sm:px-4 py-2 text-xs font-semibold rounded-full bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white shadow-md shadow-primary/10 transition-all active:scale-95 cursor-pointer"
-            >
-              Catálogo
-            </Link>
-            <AdminNavLink className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors" />
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Banners administrables (/admin/banners), arriba de todo */}
       {banners.length > 0 && (
@@ -168,6 +149,55 @@ export default async function Home() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* Ideas e inspiración: chat con IA (/ideas), debajo de "Explora por categoría" */}
+      <section className="py-16 sm:py-20 bg-zinc-50 border-t border-zinc-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-primary-dark text-white shadow-xl shadow-primary/20">
+              <div className="pointer-events-none absolute -top-24 -left-16 w-80 h-80 rounded-full bg-white/15 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-32 -right-16 w-96 h-96 rounded-full bg-primary-dark/60 blur-3xl" />
+
+              <div className="relative grid gap-10 px-6 py-10 sm:px-10 sm:py-14 lg:grid-cols-2 lg:items-center lg:gap-14">
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider ring-1 ring-white/25">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Ideas e inspiración
+                  </span>
+                  <h2 className="mt-5 text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+                    ¿Qué tienes en mente?
+                  </h2>
+                  <p className="mt-4 text-white/90 leading-relaxed max-w-xl">
+                    Cuéntanos tu problema o lo que quieres lograr, como “quiero ordenar mi escritorio” o “quiero decorar mi sala”, y te damos ideas de artículos. Guarda las que te gusten y mándalas a cotizar por WhatsApp.
+                  </p>
+                  <Link
+                    href="/ideas"
+                    className="btn-shine group mt-7 inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-primary-dark shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                  >
+                    Dame ideas
+                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  </Link>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80 mb-4">Prueba escribir algo así</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {EXAMPLE_PROMPTS.map((prompt) => (
+                      <Link
+                        key={prompt}
+                        href={ideasHrefFor(prompt)}
+                        className="rounded-full bg-white/15 px-4 py-2 text-sm text-white ring-1 ring-white/25 transition-all hover:bg-white hover:text-primary-dark hover:-translate-y-0.5"
+                      >
+                        {prompt}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 

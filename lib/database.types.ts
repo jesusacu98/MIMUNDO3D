@@ -497,6 +497,105 @@ export interface Database {
         };
         Relationships: [];
       };
+      idea_conversations: {
+        Row: {
+          id: string;
+          session_id: string;
+          messages: unknown;
+          quote_sent: boolean;
+          quote_items: unknown;
+          quote_sent_at: string | null;
+          provider: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          messages?: unknown;
+          quote_sent?: boolean;
+          quote_items?: unknown;
+          quote_sent_at?: string | null;
+          provider?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          messages?: unknown;
+          quote_sent?: boolean;
+          quote_items?: unknown;
+          quote_sent_at?: string | null;
+          provider?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      idea_quotes: {
+        Row: {
+          id: string;
+          token: string;
+          session_id: string;
+          need: string;
+          items: unknown;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          session_id: string;
+          need?: string;
+          items: unknown;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          token?: string;
+          session_id?: string;
+          need?: string;
+          items?: unknown;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      idea_settings: {
+        Row: {
+          key: string;
+          value: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      idea_chat_log: {
+        Row: {
+          id: number;
+          ip_hash: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          ip_hash: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          ip_hash?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

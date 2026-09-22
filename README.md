@@ -46,7 +46,7 @@ git push -u origin main
 
 ## ⚙️ Configuración del Entorno Local
 
-1. Crea un archivo `.env.local` en la raíz (ya preconfigurado por la inicialización):
+1. Crea un archivo `.env` en la raíz con los valores reales (`.env.example` trae la lista completa de variables, incluidas las opcionales del chat de ideas):
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://ffxdmtjueqkfxizsjhbp.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_mdWGKKsfDlT_1smVB8w2ag_vjF1pL7W
