@@ -8,12 +8,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // A propósito NO vive en variables de entorno (decisión explícita del dueño del negocio): así se
 // puede reconfigurar desde el navegador y aplica al instante, sin volver a desplegar el sitio.
 //
-// La llave de Anthropic (`apiKey`) NUNCA debe pasarse a un Client Component ni a un Server Action
+// La llave de OpenAI (`apiKey`) NUNCA debe pasarse a un Client Component ni a un Server Action
 // devuelto al navegador — sólo la usan `getLlmProvider()` y el propio SDK, ambos server-only.
 // Para la pantalla del admin, usar `toSafeView()`, que nunca incluye el valor completo.
+// Es la MISMA llave que usa el generador de diseños en /admin/disenos (lib/disenos/generate.ts):
+// una sola cuenta de OpenAI para texto e imágenes, para simplificar la facturación.
 
 export interface IdeaSettings {
-  provider: 'auto' | 'mock' | 'anthropic';
+  provider: 'auto' | 'mock' | 'openai';
   model: string;
   useCatalog: boolean;
   rateLimitPerHour: number;
@@ -23,7 +25,7 @@ export interface IdeaSettings {
   apiKey: string | null;
 }
 
-export const DEFAULT_MODEL = 'claude-haiku-4-5';
+export const DEFAULT_MODEL = 'gpt-5.6-luna';
 
 const DEFAULTS: IdeaSettings = {
   provider: 'auto',
@@ -66,13 +68,13 @@ export async function getIdeaSettings(): Promise<IdeaSettings> {
     const row = new Map((data ?? []).map((r) => [r.key, r.value ?? undefined]));
     const providerRaw = row.get('provider')?.trim().toLowerCase();
     const settings: IdeaSettings = {
-      provider: providerRaw === 'mock' || providerRaw === 'anthropic' ? providerRaw : 'auto',
+      provider: providerRaw === 'mock' || providerRaw === 'openai' ? providerRaw : 'auto',
       model: row.get('model')?.trim() || DEFAULTS.model,
       useCatalog: row.get('use_catalog') !== 'false',
       rateLimitPerHour: parsePositive(row.get('rate_limit_per_hour'), DEFAULTS.rateLimitPerHour),
       globalRateLimitPerHour: parsePositive(row.get('global_rate_limit_per_hour'), DEFAULTS.globalRateLimitPerHour),
       globalRateLimitPerDay: parsePositive(row.get('global_rate_limit_per_day'), DEFAULTS.globalRateLimitPerDay),
-      apiKey: row.get('anthropic_api_key')?.trim() || null,
+      apiKey: row.get('openai_api_key')?.trim() || null,
     };
     cache = { at: Date.now(), settings };
     return settings;
@@ -127,7 +129,7 @@ export async function updateIdeaSettings(input: {
 
 /** `value` guarda/reemplaza la llave; `null` la quita (el chat vuelve al modo demostración). */
 export async function setIdeaApiKey(value: string | null): Promise<void> {
-  const { error } = await supabaseAdmin.from('idea_settings').upsert({ key: 'anthropic_api_key', value }, { onConflict: 'key' });
+  const { error } = await supabaseAdmin.from('idea_settings').upsert({ key: 'openai_api_key', value }, { onConflict: 'key' });
   if (error) throw error;
   invalidateIdeaSettingsCache();
 }

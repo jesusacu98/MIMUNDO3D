@@ -18,7 +18,7 @@ interface SettingsFormValues {
 
 function parseSettingsForm(formData: FormData): { values: SettingsFormValues } | { error: string } {
   const provider = String(formData.get('provider') || 'auto');
-  if (!['auto', 'mock', 'anthropic'].includes(provider)) {
+  if (!['auto', 'mock', 'openai'].includes(provider)) {
     return { error: 'Proveedor inválido.' };
   }
 

@@ -12,10 +12,11 @@
 --   KB por fila). Para invalidar un enlace basta con borrar su fila.
 --
 -- idea_settings: configuración del chat editable desde /admin/ideas/configuracion (proveedor de
---   IA, modelo, límites de uso, y la propia ANTHROPIC_API_KEY). Reemplaza a las variables de
+--   IA, modelo, límites de uso, y la propia OPENAI_API_KEY). Reemplaza a las variables de
 --   entorno IDEAS_* — ya no viven en .env, todo se administra desde aquí y aplica al instante,
 --   sin redeploy. Fila por fila (clave/valor); si una clave no existe, el código usa un valor por
---   defecto razonable (ver lib/ideas/settings.ts).
+--   defecto razonable (ver lib/ideas/settings.ts). La misma llave la usa el generador de diseños
+--   en /admin/disenos (lib/disenos/generate.ts) — una sola cuenta de OpenAI para las dos cosas.
 --
 -- Las cuatro tablas SIN políticas: sólo el service role (supabaseAdmin) lee/escribe.
 -- No tocan `orders`: las cotizaciones se siguen levantando a mano desde WhatsApp.
@@ -77,7 +78,7 @@ alter table public.idea_quotes enable row level security;
 
 create table if not exists public.idea_settings (
   key text primary key,
-  -- text plano (incluida la llave de Anthropic): esta tabla sin políticas sólo la lee/escribe
+  -- text plano (incluida la llave de OpenAI): esta tabla sin políticas sólo la lee/escribe
   -- supabaseAdmin, el mismo nivel de confianza que ya tienen client_bank_accounts o products.cost.
   value text,
   updated_at timestamptz not null default now()

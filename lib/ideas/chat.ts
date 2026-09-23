@@ -3,6 +3,7 @@ import { buildSystemPrompt } from './systemPrompt';
 import { executeTool, SEARCH_CATALOG_TOOL, SHOW_IDEAS_TOOL } from './tools';
 import { textOf } from './parts';
 import type { ChatMessage, ChatStreamEvent } from './types';
+import { notifyAiError } from '@/lib/notify/email';
 
 // Orquestador del chat: conversa con el proveedor de IA, ejecuta las herramientas que pide y
 // convierte todo en eventos para el navegador. No conoce a ningún proveedor concreto: sólo
@@ -91,6 +92,7 @@ export async function* runIdeasChat(options: RunChatOptions): AsyncGenerator<Cha
   } catch (error) {
     if (signal?.aborted) return; // el cliente cerró la conexión: no hay a quién avisar
     console.error('[ideas] Error del proveedor de IA:', error);
+    void notifyAiError('ideas', error);
     yield { type: 'error', message: FRIENDLY_ERROR };
     return;
   }

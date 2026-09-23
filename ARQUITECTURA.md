@@ -8,7 +8,7 @@ Sitio web de MIMUNDO3D, un emprendimiento de impresión 3D (FDM, SLA, modelado y
 
 1. **Marketing / catálogo**: landing page y catálogo de productos para captar clientes.
 2. **Herramienta de cobro NFC**: cada expositor físico con chip NFC apunta a una URL `/pago/[client_id]` que muestra los datos bancarios de un cliente/negocio para recibir transferencias, con botón de copiado rápido (pensado para pagos por transferencia SPEI en México) y, opcionalmente, un botón de WhatsApp.
-3. **Gestión interna del negocio** (`/admin`, protegido por auth): catálogo, clientes (NFC y redes), pedidos/ventas, inversión/gastos, una calculadora de costos y un generador de códigos QR. Ver §4bis.
+3. **Gestión interna del negocio** (`/admin`, protegido por auth): catálogo, clientes (NFC y redes), pedidos/ventas, inversión/gastos, una calculadora de costos, un generador de códigos QR y un generador de bocetos de diseño con IA. Ver §4bis.
 
 4. **Ideas e inspiración** (`/ideas`): chat con IA para clientes que no saben qué diseño pedir; propone ideas de producto (cruzadas con el catálogo), las guardan en "Mi cotización" y la envían por WhatsApp. Ver §12.
 
@@ -62,12 +62,15 @@ app/
     calculadora/                 Calculadora de costo/precio de impresión (client-only, no persiste en Supabase)
     qr/                          Generador de códigos QR (SVG) para URLs (ej. las de /pago/[client_id])
     ideas/                       Consulta de las conversaciones del chat de /ideas y de las listas enviadas a cotizar (sólo lectura)
-    ideas/configuracion/          Formulario de configuración del chat (proveedor de IA, modelo, límites, llave de Anthropic) — ver §12
+    ideas/configuracion/          Formulario de configuración del chat (proveedor de IA, modelo, límites, llave de OpenAI) — ver §12
+    disenos/                     Generador de bocetos/mockups de diseño (texto + logo opcional → imágenes vía OpenAI, modelo elegible por generación); herramienta interna, no pública — ver §12
+    notificaciones/               Configuración del aviso por correo ante errores de IA (servidor/usuario/contraseña SMTP, correo de aviso) — ver §14
   api/
     hello/route.ts           Endpoint de ejemplo/placeholder (no usado en producción)
     pago/[client_id]/route.ts  Endpoint real: consulta Supabase con la service role key
     ideas/chat/route.ts      POST: chat con IA en streaming (NDJSON). Valida, aplica límite por IP, guarda la conversación
     ideas/quote/route.ts     POST: guarda la lista del cliente y devuelve el token de su enlace público /cotizacion/<token> (NO crea pedidos)
+    admin/disenos/generate/route.ts  POST: genera las imágenes de /admin/disenos. Re-verifica rol admin (proxy.ts no protege /api/*)
   r/[client_id]/[network]/route.ts  Redirección corta pública (302) a la red social guardada del cliente; acepta alias (`ig`, `fb`, `tt`, `wa`...). Si no existe, redirige a `/`
 components/
   ProductCarousel.tsx           Carrusel horizontal de tarjetas de producto (home y "Productos similares" de la ficha)
@@ -86,7 +89,9 @@ lib/
   orderStatuses.ts               Constantes de estatus/método de pago de pedidos (`ORDER_STATUSES`, `PAYMENT_STATUSES`, `PAYMENT_METHODS`) y sus clases de color
   qr.ts                           `buildQrSvg()` — genera el QR como SVG a mano (rects, no `toString(..., {type:'svg'})`) para que escale limpio en preview responsive
   storage.ts                      Sube/borra imágenes de producto y logos de clientes NFC en el bucket público `catalogos` de Supabase Storage
-  ideas/                          Lógica del chat de ideas (ver §12): `llm/` (interfaz de proveedor + Anthropic + simulación), `settings.ts` (configuración editable desde el admin), `chat.ts` (orquestador), `tools.ts`, `catalog.ts`, `persistence.ts`, `validate.ts`, `whatsapp.ts`...
+  ideas/                          Lógica del chat de ideas (ver §12): `llm/` (interfaz de proveedor + OpenAI + simulación; `anthropic.ts` queda sin referenciar), `settings.ts` (configuración editable desde el admin, misma llave que usa `disenos/`), `chat.ts` (orquestador), `tools.ts`, `catalog.ts`, `persistence.ts`, `validate.ts`, `whatsapp.ts`...
+  disenos/                        Generador de diseños de /admin/disenos (ver §12): `generate.ts` (llama a `images.generate`/`images.edit` de OpenAI), `promptBuilder.ts` (reglas de impresión FDM que se anteponen al prompt del usuario)
+  notify/                         Aviso por correo ante errores de IA (ver §14): `email.ts` (manda por SMTP vía `nodemailer`), `settings.ts` (configuración editable desde /admin/notificaciones, mismo patrón que lib/ideas/settings.ts)
 scripts/
   seed.js                       Inserta/actualiza un cliente y cuenta de prueba (ID "1")
   test-query.js                 Query de prueba usando la anon key
@@ -130,7 +135,9 @@ Todas las rutas bajo `/admin/*` son Server Components async que, además de la p
 | `/admin/calculadora` | Calculadora de costos | Client Component puro (`CalculadoraCosto.tsx`), sin persistencia — calcula costo de filamento + energía + desgaste de máquina y sugiere precio de venta según un margen. No lee ni escribe Supabase. |
 | `/admin/qr` | Generador de QR | Client Component (`QRGenerator.tsx`) que arma un SVG de QR con `lib/qr.ts` (renderer propio a base de `<path>` de rectángulos, no el `toString(svg)` de la librería `qrcode`, para que escale sin distorsión) y lo descarga. No persiste nada. |
 | `/admin/ideas` | Ideas (chat IA) | Sólo lectura: lista las conversaciones de `/ideas` (lo que piden los clientes), filtrable por "Enviadas a cotizar", con la transcripción, la lista que mandaron y el enlace de cada envío. No toca `orders`: los pedidos se siguen levantando a mano desde WhatsApp. |
-| `/admin/ideas/configuracion` | Configuración IA | Proveedor de IA, modelo, uso del catálogo, límites de uso y la llave de Anthropic — ver §12. Editable, aplica al instante. |
+| `/admin/ideas/configuracion` | Configuración IA | Proveedor de IA, modelo, uso del catálogo, límites de uso y la llave de OpenAI — ver §12. Editable, aplica al instante. |
+| `/admin/disenos` | Generador de diseños | Descripción + logo opcional → 1-4 bocetos/mockups de OpenAI (modelo de imagen elegible por generación), con reglas de imprimibilidad FDM en el prompt. No genera STL. Reusa la llave de `/admin/ideas/configuracion` — ver §12. |
+| `/admin/notificaciones` | Notificaciones | Servidor/usuario/contraseña SMTP y correo que recibe el aviso cuando falla una llamada a IA en `/ideas` o `/admin/disenos` — ver §14. Editable, aplica al instante. |
 
 ### Nota de diseño: por qué `/pago/[client_id]` no es Server Component
 
@@ -224,7 +231,7 @@ Tres tablas **sin políticas RLS** (sólo `supabaseAdmin` las lee/escribe):
 - `id` (uuid, PK), `session_id` (text, único; lo genera el navegador y agrupa los turnos de una conversación)
 - `messages` (jsonb): `[{ id, role, parts: [{type:'text',text} | {type:'ideas',ideas:[...]}] }]`
 - `quote_sent` (boolean), `quote_items` (jsonb, snapshot de la lista al enviarla), `quote_sent_at`
-- `provider` (`'anthropic'`, `'mock'`...), `created_at`, `updated_at`
+- `provider` (`'openai'`, `'mock'`...), `created_at`, `updated_at`
 
 **`idea_quotes`**
 - `id` (uuid, PK), `token` (único, 16 bytes aleatorios en base64url = 22 caracteres; **es lo único que protege el enlace**), `session_id`, `need` (necesidad original), `items` (jsonb, copia de la lista al enviar), `created_at`
@@ -259,7 +266,7 @@ Puntos a vigilar:
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY` (server-only, no debe llevar el prefijo `NEXT_PUBLIC_`)
 
-  El chat de ideas (`/ideas`) no usa variables de entorno propias — su configuración (incluida `ANTHROPIC_API_KEY`) vive en la tabla `idea_settings` y se edita desde `/admin/ideas/configuracion` (ver §12).
+  El chat de ideas (`/ideas`) no usa variables de entorno propias — su configuración (incluida `OPENAI_API_KEY`) vive en la tabla `idea_settings` y se edita desde `/admin/ideas/configuracion` (ver §12). El generador de diseños de `/admin/disenos` (§13) reusa la misma llave.
 
 ## 8. Estado del catálogo (`/catalogo`)
 
@@ -308,7 +315,8 @@ Todo el sistema habla sólo con `LlmProvider` (`lib/ideas/llm/types.ts`): un mé
 | Archivo | Qué es |
 |---|---|
 | `llm/types.ts` | Contrato (`LlmProvider`, `LlmMessage`, `LlmToolDef`, `LlmStreamEvent`) |
-| `llm/anthropic.ts` | Claude vía `@anthropic-ai/sdk` (streaming, herramientas, prompt caching del system prompt). Modelo por defecto `claude-haiku-4-5` |
+| `llm/openai.ts` | OpenAI vía `openai` (Responses API: streaming, herramientas). Modelo por defecto `gpt-5.6-luna` |
+| `llm/anthropic.ts` | Claude vía `@anthropic-ai/sdk`; queda en el repo implementando el mismo contrato pero sin referenciarse desde `llm/index.ts` — reactivarlo es agregar su caso ahí de nuevo |
 | `llm/mock.ts` | **Simulación** sin llave: banco fijo de ideas por tema, consulta el catálogo real y hace el mismo bucle de herramientas. La UI muestra "Modo demostración" |
 | `llm/index.ts` | `getLlmProvider(settings)`: función pura, **único** lugar que conoce a los proveedores concretos. Recibe la configuración ya resuelta, no lee `process.env` |
 
@@ -320,9 +328,9 @@ Decisión explícita del dueño del negocio (2026-09-22): proveedor de IA, model
 
 | Campo (tabla `idea_settings`) | Efecto | Default si falta |
 |---|---|---|
-| `anthropic_api_key` | Sin ella se usa la simulación; con ella, Claude. **Nunca se manda al navegador** — la página del admin sólo muestra si hay una configurada y sus últimos 4 caracteres (`toSafeView()`); dejar el campo en blanco al guardar no la borra, hay un botón aparte para quitarla | ninguna (modo demostración) |
-| `provider` | `mock` o `anthropic` fuerza uno; cualquier otro valor (incluido vacío) dejar que decida solo según si hay llave | `auto` |
-| `model` | Modelo de Anthropic | `claude-haiku-4-5` |
+| `openai_api_key` | Sin ella se usa la simulación; con ella, OpenAI. Es la misma llave que usa el generador de diseños de `/admin/disenos` (§13). **Nunca se manda al navegador** — la página del admin sólo muestra si hay una configurada y sus últimos 4 caracteres (`toSafeView()`); dejar el campo en blanco al guardar no la borra, hay un botón aparte para quitarla | ninguna (modo demostración) |
+| `provider` | `mock` o `openai` fuerza uno; cualquier otro valor (incluido vacío) dejar que decida solo según si hay llave | `auto` |
+| `model` | Modelo de OpenAI | `gpt-5.6-luna` |
 | `use_catalog` | `false` desconecta la base de datos: la IA sugiere ideas libres | conectado |
 | `rate_limit_per_hour` | Mensajes por IP por hora | 40 |
 | `global_rate_limit_per_hour` | Techo global de mensajes reales a la IA por hora, sumando todos los visitantes | 60 |
@@ -338,3 +346,33 @@ Si la tabla no existe todavía o Supabase no responde, `getIdeaSettings()` cae a
 - Límite de uso y registro de conversaciones son "de mejor esfuerzo": si faltan las tablas o la service role key, se avisa una vez en consola y el chat sigue funcionando (sin límite ni historial).
 - Se guarda el texto de las conversaciones (para `/admin/ideas`); la interfaz no muestra un aviso al respecto. No se guarda la IP.
 - Las tarjetas y el mensaje de WhatsApp nunca incluyen `cost` ni datos internos.
+
+## 13. Generador de diseños (`/admin/disenos`)
+
+Herramienta **interna** (2026-09-22): a diferencia de `/ideas`, no es pública — vive dentro de `/admin`, protegida por `proxy.ts` + re-verificación de rol en la página, igual que el resto del panel. El dueño del negocio la usa para reemplazar el flujo manual de rotar ChatGPT/Gemini pidiendo bocetos de diseño (ej. "ideas para un llavero" + logo), que a veces devolvían geometría no imprimible en FDM.
+
+### Flujo
+
+1. `DisenosForm.tsx` (Client Component) manda `description`, `logo` (opcional), `count` (1-4) y `model` como `FormData` a `POST /api/admin/disenos/generate`. El modelo se elige en un desplegable curado en `lib/disenos/models.ts` (`gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-1-mini`, + "Otro" para escribir cualquier id — `gpt-image-1`/`gpt-image-1.5` se sacaron de la lista al retirarse el 2026-12-01, siguen andando vía "Otro" mientras tanto) — **no se guarda**, es por generación, así se pueden comparar resultados entre modelos sin entrar a ninguna configuración.
+2. La ruta verifica `isCurrentUserAdmin()` (necesario porque `proxy.ts` sólo protege `/admin/:path*`, no `/api/*`), lee `getIdeaSettings()` para la llave de OpenAI y arma el prompt final con `lib/disenos/promptBuilder.ts`.
+3. `lib/disenos/generate.ts` llama a `client.images.generate()` (sin logo) o `client.images.edit()` (con logo, como imagen de referencia) del SDK de OpenAI, con el modelo recibido y calidad `auto` (es la única que funciona igual en toda la lista de modelos elegibles — gpt-image-* acepta low/medium/high/auto, dall-e-3 sólo standard/hd, dall-e-2 sólo standard) — nunca genera STL/modelo 3D.
+4. Devuelve las imágenes en base64 (`data:image/png;base64,...`); el cliente las muestra en una grilla con botón de descarga por imagen. **Sin persistencia**: no se guardan en Supabase ni en Storage, son resultados de un momento.
+5. El modelo elegido tiene que estar habilitado en "Allowed models" del proyecto de OpenAI (`platform.openai.com` → Settings → Project); si no, la API devuelve 403 y el error se ve tal cual en el formulario (y dispara el aviso por correo de §14).
+
+### Por qué el prompt tiene reglas de impresión fijas
+
+`lib/disenos/promptBuilder.ts` antepone siempre las mismas restricciones de imprimibilidad FDM al pedido del usuario: pieza como sólido único apoyable sobre una base plana, sin partes flotantes ni voladizos extremos sin soporte, sin huecos internos cerrados, espesores razonables. Es la diferencia principal frente a pedirle el boceto directo a ChatGPT/Gemini sin ese contexto.
+
+### Configuración
+
+No tiene tabla ni pantalla propia — reusa `getIdeaSettings()` (`lib/ideas/settings.ts`) para la llave de OpenAI, la misma que configura `/admin/ideas/configuracion` (§12): una sola cuenta de OpenAI paga texto (`/ideas`) e imágenes (`/admin/disenos`). Sin llave guardada, la ruta devuelve un error pidiendo configurarla — no hay modo simulación para imágenes (no aporta valor simular un boceto).
+
+## 14. Aviso por correo cuando falla una llamada a IA (`/admin/notificaciones`, 2026-09-22)
+
+Cuando una llamada real al proveedor de IA falla (no cuando responde la simulación) tanto en `/ideas` como en `/admin/disenos`, `lib/notify/email.ts` manda un correo de aviso al dueño del negocio vía **SMTP** (`nodemailer`), usando el correo que el negocio ya tiene (no una cuenta de un tercero nueva).
+
+- **Dónde se dispara**: en el `catch` de `runIdeasChat` (`lib/ideas/chat.ts`) y en el de `POST /api/admin/disenos/generate` (`app/api/admin/disenos/generate/route.ts`) — los dos puntos donde puede fallar una llamada real al proveedor (red caída, API key inválida, rate limit del proveedor, etc.), no errores de validación de la request.
+- **Configuración editable desde `/admin/notificaciones`** (tabla `notify_settings`, no variables de entorno — mismo criterio que `idea_settings`, ver `lib/notify/settings.ts`): servidor, puerto y usuario SMTP, la contraseña (de aplicación — para Gmail se genera desde Cuenta de Google → Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones, no es la contraseña normal) y el correo que recibe los avisos. Aplica al instante (caché de ~20s), sin redeploy. Sin contraseña guardada, `notifyAiError()` sólo deja un `console.warn` y no intenta mandar nada — nunca rompe la respuesta de error que ya se le da al usuario/admin. **La contraseña nunca se manda al navegador** — mismo patrón de `toSafeView()` que `idea_settings`.
+- **Cooldown de 10 minutos por origen** (`ideas` / `disenos`), en memoria: si el proveedor de IA cae y fallan muchos mensajes seguidos, no manda un correo por cada uno.
+- El correo incluye el mensaje de error (recortado a 1000 caracteres) pero no datos del cliente ni contenido de la conversación.
+- La tabla vive en `supabase/schema_notify.sql` (correr a mano en el SQL Editor de Supabase).

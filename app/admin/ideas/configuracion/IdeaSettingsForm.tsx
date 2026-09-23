@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 import type { IdeaSettingsView } from '@/lib/ideas/settings';
+import { MODELS_BY_PROVIDER } from '@/lib/ideas/llm/models';
 
 interface IdeaSettingsFormProps {
   settings: IdeaSettingsView;
@@ -16,16 +17,26 @@ const inputClass =
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
 const helpClass = 'mt-1.5 text-xs text-zinc-500';
 
+const CUSTOM_MODEL = '__custom__';
+
 export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction }: IdeaSettingsFormProps) {
   const [showKey, setShowKey] = useState(false);
+  // `provider` maneja qué lista de modelos mostrar (mock no usa modelo); no depende del valor
+  // guardado en BD hasta que el usuario guarda de nuevo, es sólo para la UI del selector.
+  const [provider, setProvider] = useState<'auto' | 'mock' | 'openai'>(settings.provider);
+  const models = provider === 'mock' ? [] : MODELS_BY_PROVIDER.openai;
+  const knownModel = models.some((m) => m.id === settings.model);
+  const [modelChoice, setModelChoice] = useState(knownModel ? settings.model : CUSTOM_MODEL);
+  const [customModel, setCustomModel] = useState(knownModel ? '' : settings.model);
+  const selectedDescription = models.find((m) => m.id === modelChoice)?.description;
 
   return (
     <div className="space-y-6">
       <form action={saveAction} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-6">
-        {/* Llave de Anthropic */}
+        {/* Llave de OpenAI */}
         <div>
           <label htmlFor="api_key" className={labelClass}>
-            Llave de Anthropic (ANTHROPIC_API_KEY)
+            Llave de OpenAI (OPENAI_API_KEY)
           </label>
           <div className="mt-2 flex items-stretch gap-2">
             <input
@@ -34,7 +45,7 @@ export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction 
               type={showKey ? 'text' : 'password'}
               autoComplete="off"
               spellCheck={false}
-              placeholder={settings.hasApiKey ? 'Dejar en blanco para no cambiarla' : 'sk-ant-...'}
+              placeholder={settings.hasApiKey ? 'Dejar en blanco para no cambiarla' : 'sk-...'}
               className={`${inputClass} mt-0 flex-1`}
             />
             <button
@@ -50,10 +61,11 @@ export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction 
             <KeyRound className="w-3.5 h-3.5 shrink-0" />
             {settings.hasApiKey ? (
               <>
-                Configurada, termina en <span className="font-mono">...{settings.apiKeyPreview}</span>.
+                Configurada, termina en <span className="font-mono">...{settings.apiKeyPreview}</span>. También la usa el generador de
+                diseños en /admin/disenos.
               </>
             ) : (
-              'No configurada: el chat responde en modo demostración (gratis, sin llamar a Claude).'
+              'No configurada: el chat responde en modo demostración (gratis, sin llamar a OpenAI) y el generador de diseños no funciona.'
             )}
           </p>
         </div>
@@ -62,9 +74,15 @@ export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction 
           <label htmlFor="provider" className={labelClass}>
             Proveedor
           </label>
-          <select id="provider" name="provider" defaultValue={settings.provider} className={inputClass}>
-            <option value="auto">Automático (usa Claude si hay llave, si no la simulación)</option>
-            <option value="anthropic">Forzar Claude</option>
+          <select
+            id="provider"
+            name="provider"
+            value={provider}
+            onChange={(e) => setProvider(e.target.value as 'auto' | 'mock' | 'openai')}
+            className={inputClass}
+          >
+            <option value="auto">Automático (usa OpenAI si hay llave, si no la simulación)</option>
+            <option value="openai">Forzar OpenAI</option>
             <option value="mock">Forzar simulación (modo demostración)</option>
           </select>
           <p className={helpClass}>Deja &quot;Automático&quot; salvo que quieras forzar uno de los dos a propósito.</p>
@@ -74,8 +92,51 @@ export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction 
           <label htmlFor="model" className={labelClass}>
             Modelo
           </label>
-          <input id="model" name="model" type="text" defaultValue={settings.model} placeholder="claude-haiku-4-5" className={inputClass} />
-          <p className={helpClass}>El más barato y rápido es claude-haiku-4-5; no lo cambies salvo que sepas cuál quieres probar.</p>
+
+          {provider === 'mock' ? (
+            <>
+              <input type="hidden" name="model" value={modelChoice === CUSTOM_MODEL ? customModel : modelChoice} />
+              <p className="mt-2 px-4 py-2.5 bg-zinc-100 border border-zinc-200 rounded-xl text-sm text-zinc-400">
+                El modo simulación no llama a ningún modelo.
+              </p>
+            </>
+          ) : (
+            <>
+              <select
+                id="model"
+                value={modelChoice}
+                onChange={(e) => setModelChoice(e.target.value)}
+                className={inputClass}
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} ({m.id})
+                  </option>
+                ))}
+                <option value={CUSTOM_MODEL}>Otro (escribir el nombre)...</option>
+              </select>
+
+              {modelChoice === CUSTOM_MODEL ? (
+                <input
+                  name="model"
+                  type="text"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder="nombre exacto del modelo en tu cuenta de OpenAI"
+                  className={`${inputClass} mt-2`}
+                  required
+                />
+              ) : (
+                <input type="hidden" name="model" value={modelChoice} />
+              )}
+
+              <p className={helpClass}>
+                {modelChoice === CUSTOM_MODEL
+                  ? 'Revisá en tu cuenta de OpenAI el nombre exacto del modelo que querés usar.'
+                  : selectedDescription}
+              </p>
+            </>
+          )}
         </div>
 
         <label className="flex items-start gap-3 cursor-pointer">
@@ -155,13 +216,17 @@ export default function IdeaSettingsForm({ settings, saveAction, clearKeyAction 
         <form
           action={clearKeyAction}
           onSubmit={(e) => {
-            if (!confirm('¿Quitar la llave de Anthropic? El chat volverá al modo demostración hasta que configures una nueva.')) {
+            if (
+              !confirm(
+                '¿Quitar la llave de OpenAI? El chat volverá al modo demostración y el generador de diseños dejará de funcionar hasta que configures una nueva.',
+              )
+            ) {
               e.preventDefault();
             }
           }}
           className="bg-white border border-zinc-200/60 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4"
         >
-          <p className="text-sm text-zinc-600">¿Ya no quieres usar Claude por ahora? Quita la llave guardada.</p>
+          <p className="text-sm text-zinc-600">¿Ya no quieres usar OpenAI por ahora? Quita la llave guardada.</p>
           <SubmitButton className="shrink-0 inline-flex items-center justify-center px-5 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-semibold text-sm transition-all cursor-pointer">
             Quitar llave configurada
           </SubmitButton>

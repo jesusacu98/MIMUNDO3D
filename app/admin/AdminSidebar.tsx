@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Bell,
   Calculator,
   ClipboardList,
   ExternalLink,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   Tags,
   Users,
+  Wand2,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -46,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/clientes', label: 'Clientes', icon: Users },
       { href: '/admin/ideas', label: 'Ideas (chat IA)', icon: Sparkles },
       { href: '/admin/ideas/configuracion', label: 'Configuración IA', icon: Settings },
+      { href: '/admin/notificaciones', label: 'Notificaciones', icon: Bell },
       { href: '/admin/inversion', label: 'Inversión', icon: PiggyBank },
     ],
   },
@@ -63,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/calculadora', label: 'Calculadora de costos', icon: Calculator },
       { href: '/admin/qr', label: 'Generador de QR', icon: QrCode },
+      { href: '/admin/disenos', label: 'Generador de diseños', icon: Wand2 },
     ],
   },
 ];
