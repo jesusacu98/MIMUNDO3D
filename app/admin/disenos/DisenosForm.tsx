@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Download, ImagePlus, Loader2, Wand2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Download, ImagePlus, Loader2, Upload, Wand2, X } from 'lucide-react';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
 const inputClass =
@@ -11,9 +11,18 @@ const helpClass = 'mt-1.5 text-xs text-zinc-500';
 
 const CUSTOM_MODEL = '__custom__';
 
+interface LogoEntry {
+  file: File;
+  previewUrl: string;
+}
+
 export default function DisenosForm() {
   const [description, setDescription] = useState('');
-  const [logo, setLogo] = useState<File | null>(null);
+  const [logos, setLogos] = useState<LogoEntry[]>([]);
+  const logosRef = useRef<LogoEntry[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const dragCounter = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [count, setCount] = useState(4);
   const [modelChoice, setModelChoice] = useState(DEFAULT_IMAGE_MODEL);
   const [customModel, setCustomModel] = useState('');
@@ -22,6 +31,55 @@ export default function DisenosForm() {
   const [images, setImages] = useState<string[]>([]);
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
+
+  // Los blob: de las vistas previas se revocan al quitar cada imagen o al desmontar, para no
+  // filtrar memoria. `logosRef` mantiene el listado más reciente disponible en el cleanup final.
+  useEffect(() => {
+    logosRef.current = logos;
+  }, [logos]);
+
+  useEffect(() => {
+    return () => {
+      logosRef.current.forEach((entry) => URL.revokeObjectURL(entry.previewUrl));
+    };
+  }, []);
+
+  function addLogoFiles(fileList: FileList | File[] | null) {
+    if (!fileList) return;
+    const newFiles = Array.from(fileList).filter((file) => file.type.startsWith('image/'));
+    if (newFiles.length === 0) return;
+    setLogos((prev) => [...prev, ...newFiles.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))]);
+  }
+
+  function removeLogo(index: number) {
+    setLogos((prev) => {
+      const target = prev[index];
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+    addLogoFiles(e.dataTransfer.files);
+  }
+
+  function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current += 1;
+    setDragActive(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setDragActive(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +101,7 @@ export default function DisenosForm() {
       formData.set('description', description);
       formData.set('count', String(count));
       formData.set('model', model);
-      if (logo) formData.set('logo', logo);
+      logos.forEach((entry) => formData.append('logos', entry.file));
 
       const res = await fetch('/api/admin/disenos/generate', { method: 'POST', body: formData });
       const data = await res.json();
@@ -77,17 +135,66 @@ export default function DisenosForm() {
         </div>
 
         <div>
-          <label htmlFor="logo" className={labelClass}>
-            Logo de referencia (opcional)
-          </label>
+          <label className={labelClass}>Imágenes de referencia (opcional)</label>
           <input
-            id="logo"
+            ref={fileInputRef}
+            id="logos"
             type="file"
             accept="image/*"
-            onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
-            className="mt-2 block w-full text-sm text-zinc-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 cursor-pointer"
+            multiple
+            onChange={(e) => {
+              addLogoFiles(e.target.files);
+              e.target.value = ''; // permite volver a elegir el mismo archivo si lo sacaste y lo querés agregar de nuevo
+            }}
+            className="hidden"
           />
-          <p className={helpClass}>Si lo subís, el modelo intenta incorporarlo en relieve/grabado sobre la pieza.</p>
+
+          {logos.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {logos.map((entry, i) => (
+                <div key={entry.previewUrl} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={entry.previewUrl}
+                    alt=""
+                    className="w-16 h-16 rounded-lg object-cover border border-zinc-200 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeLogo(i)}
+                    aria-label={`Quitar ${entry.file.name}`}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-zinc-700 text-white flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDragEnter}
+            onDragOver={(e) => e.preventDefault()}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
+            }}
+            className={`mt-2 flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed text-center cursor-pointer transition-colors ${
+              dragActive ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'
+            }`}
+          >
+            <Upload className={`w-6 h-6 ${dragActive ? 'text-primary' : 'text-zinc-400'}`} />
+            <p className="text-sm text-zinc-600">
+              Arrastrá imágenes acá o <span className="text-primary font-medium">hacé clic para elegirlas</span>
+              {logos.length > 0 && ' — podés agregar más'}
+            </p>
+          </div>
+
+          <p className={helpClass}>Podés subir varias (por ejemplo un logo y otra referencia de forma/estilo); el modelo intenta incorporar el logo en relieve/grabado sobre la pieza.</p>
         </div>
 
         <div>

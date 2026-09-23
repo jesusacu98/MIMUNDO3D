@@ -63,7 +63,7 @@ app/
     qr/                          Generador de códigos QR (SVG) para URLs (ej. las de /pago/[client_id])
     ideas/                       Consulta de las conversaciones del chat de /ideas y de las listas enviadas a cotizar (sólo lectura)
     ideas/configuracion/          Formulario de configuración del chat (proveedor de IA, modelo, límites, llave de OpenAI) — ver §12
-    disenos/                     Generador de bocetos/mockups de diseño (texto + logo opcional → imágenes vía OpenAI, modelo elegible por generación); herramienta interna, no pública — ver §12
+    disenos/                     Generador de bocetos/mockups de diseño (texto + imágenes de referencia opcionales, arrastrar y soltar → imágenes vía OpenAI, modelo elegible por generación); herramienta interna, no pública — ver §12
     notificaciones/               Configuración del aviso por correo ante errores de IA (servidor/usuario/contraseña SMTP, correo de aviso) — ver §14
   api/
     hello/route.ts           Endpoint de ejemplo/placeholder (no usado en producción)
@@ -136,7 +136,7 @@ Todas las rutas bajo `/admin/*` son Server Components async que, además de la p
 | `/admin/qr` | Generador de QR | Client Component (`QRGenerator.tsx`) que arma un SVG de QR con `lib/qr.ts` (renderer propio a base de `<path>` de rectángulos, no el `toString(svg)` de la librería `qrcode`, para que escale sin distorsión) y lo descarga. No persiste nada. |
 | `/admin/ideas` | Ideas (chat IA) | Sólo lectura: lista las conversaciones de `/ideas` (lo que piden los clientes), filtrable por "Enviadas a cotizar", con la transcripción, la lista que mandaron y el enlace de cada envío. No toca `orders`: los pedidos se siguen levantando a mano desde WhatsApp. |
 | `/admin/ideas/configuracion` | Configuración IA | Proveedor de IA, modelo, uso del catálogo, límites de uso y la llave de OpenAI — ver §12. Editable, aplica al instante. |
-| `/admin/disenos` | Generador de diseños | Descripción + logo opcional → 1-4 bocetos/mockups de OpenAI (modelo de imagen elegible por generación), con reglas de imprimibilidad FDM en el prompt. No genera STL. Reusa la llave de `/admin/ideas/configuracion` — ver §12. |
+| `/admin/disenos` | Generador de diseños | Descripción + imágenes de referencia opcionales (arrastrar y soltar, varias a la vez) → 1-4 bocetos/mockups de OpenAI (modelo de imagen elegible por generación), con reglas de imprimibilidad FDM en el prompt. No genera STL. Reusa la llave de `/admin/ideas/configuracion` — ver §12. |
 | `/admin/notificaciones` | Notificaciones | Servidor/usuario/contraseña SMTP y correo que recibe el aviso cuando falla una llamada a IA en `/ideas` o `/admin/disenos` — ver §14. Editable, aplica al instante. |
 
 ### Nota de diseño: por qué `/pago/[client_id]` no es Server Component
@@ -353,9 +353,9 @@ Herramienta **interna** (2026-09-22): a diferencia de `/ideas`, no es pública �
 
 ### Flujo
 
-1. `DisenosForm.tsx` (Client Component) manda `description`, `logo` (opcional), `count` (1-4) y `model` como `FormData` a `POST /api/admin/disenos/generate`. El modelo se elige en un desplegable curado en `lib/disenos/models.ts` (`gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-1-mini`, + "Otro" para escribir cualquier id — `gpt-image-1`/`gpt-image-1.5` se sacaron de la lista al retirarse el 2026-12-01, siguen andando vía "Otro" mientras tanto) — **no se guarda**, es por generación, así se pueden comparar resultados entre modelos sin entrar a ninguna configuración.
+1. `DisenosForm.tsx` (Client Component) manda `description`, `logos` (0-N archivos, arrastrar y soltar o selector múltiple con `formData.append('logos', file)` por cada uno), `count` (1-4) y `model` como `FormData` a `POST /api/admin/disenos/generate`; la ruta los junta con `formData.getAll('logos')`. El modelo se elige en un desplegable curado en `lib/disenos/models.ts` (`gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-1-mini`, + "Otro" para escribir cualquier id — `gpt-image-1`/`gpt-image-1.5` se sacaron de la lista al retirarse el 2026-12-01, siguen andando vía "Otro" mientras tanto) — **no se guarda**, es por generación, así se pueden comparar resultados entre modelos sin entrar a ninguna configuración.
 2. La ruta verifica `isCurrentUserAdmin()` (necesario porque `proxy.ts` sólo protege `/admin/:path*`, no `/api/*`), lee `getIdeaSettings()` para la llave de OpenAI y arma el prompt final con `lib/disenos/promptBuilder.ts`.
-3. `lib/disenos/generate.ts` llama a `client.images.generate()` (sin logo) o `client.images.edit()` (con logo, como imagen de referencia) del SDK de OpenAI, con el modelo recibido y calidad `auto` (es la única que funciona igual en toda la lista de modelos elegibles — gpt-image-* acepta low/medium/high/auto, dall-e-3 sólo standard/hd, dall-e-2 sólo standard) — nunca genera STL/modelo 3D.
+3. `lib/disenos/generate.ts` llama a `client.images.generate()` (sin imágenes de referencia) o `client.images.edit()` (con una o varias, como referencia — `images.edit` acepta un arreglo) del SDK de OpenAI, con el modelo recibido y calidad `auto` (es la única que funciona igual en toda la lista de modelos elegibles — gpt-image-* acepta low/medium/high/auto, dall-e-3 sólo standard/hd, dall-e-2 sólo standard) — nunca genera STL/modelo 3D.
 4. Devuelve las imágenes en base64 (`data:image/png;base64,...`); el cliente las muestra en una grilla con botón de descarga por imagen. **Sin persistencia**: no se guardan en Supabase ni en Storage, son resultados de un momento.
 5. El modelo elegido tiene que estar habilitado en "Allowed models" del proyecto de OpenAI (`platform.openai.com` → Settings → Project); si no, la API devuelve 403 y el error se ve tal cual en el formulario (y dispara el aviso por correo de §14).
 

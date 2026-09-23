@@ -24,8 +24,7 @@ export async function POST(request: Request) {
 
   const model = String(formData.get('model') || '').trim() || DEFAULT_IMAGE_MODEL;
 
-  const logo = formData.get('logo');
-  const referenceLogo = logo instanceof File && logo.size > 0 ? logo : null;
+  const referenceImages = formData.getAll('logos').filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   const settings = await getIdeaSettings();
   if (!settings.apiKey) {
@@ -36,8 +35,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const prompt = buildDesignPrompt({ description, hasLogo: Boolean(referenceLogo) });
-    const images = await generateDesignSketches({ apiKey: settings.apiKey, model, prompt, referenceLogo, count });
+    const prompt = buildDesignPrompt({ description, referenceImageCount: referenceImages.length });
+    const images = await generateDesignSketches({ apiKey: settings.apiKey, model, prompt, referenceImages, count });
     return NextResponse.json({ images });
   } catch (error) {
     console.error('[disenos] Error del proveedor de IA:', error);

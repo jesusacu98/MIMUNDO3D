@@ -13,15 +13,20 @@ const PRINTABILITY_RULES = [
 
 export interface BuildDesignPromptInput {
   description: string;
-  hasLogo: boolean;
+  /** Cuántas imágenes de referencia (logo, ejemplos de forma/estilo...) adjuntó el usuario. */
+  referenceImageCount: number;
 }
 
-export function buildDesignPrompt({ description, hasLogo }: BuildDesignPromptInput): string {
+export function buildDesignPrompt({ description, referenceImageCount }: BuildDesignPromptInput): string {
   const parts = [PRINTABILITY_RULES, `Diseño pedido: ${description.trim()}.`];
 
-  if (hasLogo) {
+  if (referenceImageCount === 1) {
     parts.push(
-      'Se adjunta un logo de referencia: incorporarlo de forma legible, grabado o en relieve sobre la superficie de la pieza (no como una textura o calcomanía plana que se perdería al imprimir).',
+      'Se adjunta una imagen de referencia (puede ser un logo): si es un logo, incorporarlo de forma legible, grabado o en relieve sobre la superficie de la pieza (no como una textura o calcomanía plana que se perdería al imprimir); si es otro tipo de referencia, usarla para guiar la forma o el estilo.',
+    );
+  } else if (referenceImageCount > 1) {
+    parts.push(
+      'Se adjuntan varias imágenes de referencia (pueden incluir un logo y otras referencias de forma o estilo): si alguna es un logo, incorporarlo de forma legible, grabado o en relieve sobre la superficie de la pieza (no como una textura o calcomanía plana que se perdería al imprimir); usar el resto para guiar la forma o el estilo del diseño.',
     );
   }
 
