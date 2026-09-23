@@ -6,6 +6,7 @@ import { HOME_CATEGORIES } from '@/lib/homeCategories';
 import { getBanners } from '@/lib/banners';
 import BannerSlider from '@/components/BannerSlider';
 import SiteHeader from '@/components/SiteHeader';
+import IdeasFab from '@/components/IdeasFab';
 import CatalogFooter from '../../catalogo/CatalogFooter';
 import CategoryProducts, { type CategoryProduct } from './CategoryProducts';
 
@@ -68,6 +69,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
   return (
     <div className="flex flex-col min-h-screen min-w-0 bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
       <SiteHeader />
+      <IdeasFab />
 
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">
         {banners.length > 0 && (

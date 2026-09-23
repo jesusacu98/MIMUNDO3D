@@ -297,6 +297,8 @@ Vercel, deploy automático por push a `main`. Variables de entorno de producció
 
 Asistente tipo ChatGPT enfocado en impresión 3D para clientes que no saben qué diseño pedir. El cliente cuenta su necesidad ("quiero organizar mi escritorio") y el asistente responde de inmediato con una lista de ideas de producto como tarjetas. Cada tarjeta se puede guardar en **Mi cotización**; al final se envía todo por WhatsApp (`wa.me/526691224168`) para que el equipo cotice. Es sólo texto (sin fotos, por ahora) y no crea pedidos: las cotizaciones se siguen levantando a mano.
 
+**Identidad "Fili" (2026-09-23)**: el asistente tiene nombre y personalidad propios — Fili, el compañero de taller de MiMundo3D (práctico, servicial, cercano, sin tecnicismos). Definido en el prompt del sistema (`lib/ideas/systemPrompt.ts`; se presenta por nombre sólo en el primer turno de cada conversación, detectando si hay respuestas previas en el historial) y reflejado en `llm/mock.ts` (mismo saludo en modo demostración). En la UI (`app/ideas/IdeasChat.tsx`) tiene su propio ícono (`Wrench` de lucide-react) como avatar y en la barra superior, y el estado vacío del chat saluda como "¡Hola! Soy Fili". `components/IdeasFab.tsx` es un botón flotante con su ícono e insignia "Nuevo" (recordada en `localStorage`, una vez por navegador) agregado junto a `<SiteHeader />` en `/`, `/catalogo`, la ficha de producto y `/categorias/[categoria]` — no en `/ideas` mismo — para que los visitantes descubran el chat mientras navegan, no sólo si entran directo a esa ruta.
+
 ### Flujo
 
 1. `IdeasChat.tsx` manda el historial a `POST /api/ideas/chat` y lee la respuesta como NDJSON (una línea JSON por evento).

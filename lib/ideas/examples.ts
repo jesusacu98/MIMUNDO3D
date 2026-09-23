@@ -14,3 +14,6 @@ export const EXAMPLE_PROMPTS = [
 export function ideasHrefFor(prompt: string): string {
   return `/ideas?q=${encodeURIComponent(prompt)}`;
 }
+
+/** Describe quién es Fili en una frase; se reutiliza tal cual en /ideas y en la sección de la home. */
+export const FILI_TAGLINE = 'Fili, el asistente de ideas de MiMundo3D, te ayuda a encontrar qué imprimir en 3D para lo que necesites.';

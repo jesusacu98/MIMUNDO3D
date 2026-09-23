@@ -3,8 +3,8 @@ import SiteHeader from '@/components/SiteHeader';
 import IdeasChatLoader from './IdeasChatLoader';
 
 export const metadata: Metadata = {
-  title: 'Ideas para tu proyecto en 3D | MiMundo3D',
-  description: 'Cuéntanos qué necesitas y te sugerimos ideas de productos impresos en 3D. Guarda las que te gusten y envíalas a cotizar por WhatsApp.',
+  title: 'Fili, tu compañero de ideas en 3D | MiMundo3D',
+  description: 'Fili te sugiere ideas de productos impresos en 3D según lo que necesites. Guarda las que te gusten y envíalas a cotizar por WhatsApp.',
 };
 
 export default function IdeasPage() {

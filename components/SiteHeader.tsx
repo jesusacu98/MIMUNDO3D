@@ -194,17 +194,21 @@ export default function SiteHeader() {
         </div>
       </header>
 
-      {/* Celular: overlay + tarjeta flotante (fuera de <header> a propósito, ver nota arriba) */}
+      {/* Celular: overlay + tarjeta flotante (fuera de <header> a propósito, ver nota arriba).
+          z-50 (no z-40) a propósito: en /ideas la barra superior del chat también es "sticky" con
+          z-40 y se pinta después en el documento — con el mismo z-index tapaba el primer ítem del
+          menú ("Inicio"). z-50 iguala al <header> y queda siempre por encima de cualquier barra
+          sticky de una página. */}
       <div
         aria-hidden={!open}
         onClick={close}
-        className={`fixed inset-0 z-40 bg-zinc-950/30 backdrop-blur-[2px] transition-opacity duration-200 sm:hidden ${
+        className={`fixed inset-0 z-50 bg-zinc-950/30 backdrop-blur-[2px] transition-opacity duration-200 sm:hidden ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       />
       <div
         inert={!open}
-        className={`fixed inset-x-3 top-[4.5rem] z-40 origin-top rounded-3xl bg-white shadow-xl shadow-zinc-900/10 ring-1 ring-zinc-900/5 transition-all duration-200 sm:hidden ${
+        className={`fixed inset-x-3 top-[4.5rem] z-50 origin-top rounded-3xl bg-white shadow-xl shadow-zinc-900/10 ring-1 ring-zinc-900/5 transition-all duration-200 sm:hidden ${
           open ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
         }`}
       >

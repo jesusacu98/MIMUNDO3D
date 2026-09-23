@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, ClipboardList, RotateCcw, Sparkles, Square } from 'lucide-react';
+import { ArrowUp, ClipboardList, RotateCcw, Square, Lightbulb } from 'lucide-react';
 import { event } from '@/lib/gtag';
-import { EXAMPLE_PROMPTS } from '@/lib/ideas/examples';
+import { EXAMPLE_PROMPTS, FILI_TAGLINE } from '@/lib/ideas/examples';
 import { applyStreamEvent, textOf } from '@/lib/ideas/parts';
 import { loadChat, loadQuote, newMessageId, newSessionId, saveChat, saveQuote } from '@/lib/ideas/storage';
 import { normalizeText } from '@/lib/ideas/text';
@@ -261,8 +261,8 @@ export default function IdeasChat() {
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-sm font-bold text-zinc-900">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Ideas
+              <Lightbulb className="h-4 w-4 text-primary" />
+              Fili
             </span>
             {demo && (
               <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-300/60" title="Las respuestas son de ejemplo, no de una IA real todavía">
@@ -300,11 +300,12 @@ export default function IdeasChat() {
         {messages.length === 0 && (
           <div className="pt-6 text-center sm:pt-14">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-lg shadow-primary/25">
-              <Sparkles className="h-7 w-7" />
+              <Lightbulb className="h-7 w-7" />
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl">¿Qué tienes en mente?</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl">¡Hola! Soy Fili 👋</h1>
+            <p className="mx-auto mt-2 max-w-xl font-medium text-primary-dark">{FILI_TAGLINE}</p>
             <p className="mx-auto mt-3 max-w-xl text-zinc-600">
-              Cuéntanos tu problema o lo que quieres lograr, como “quiero ordenar mi escritorio” o “quiero decorar mi sala”, y te damos ideas de artículos. Guarda las que te gusten y mándalas a cotizar por WhatsApp.
+              Cuéntame tu problema o lo que quieres lograr, como “quiero ordenar mi escritorio” o “quiero decorar mi sala”, y te doy ideas de artículos que se pueden imprimir en 3D. Guarda las que te gusten y mándalas a cotizar por WhatsApp.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-2.5">
               {EXAMPLE_PROMPTS.map((prompt) => (
@@ -331,8 +332,8 @@ export default function IdeasChat() {
               </div>
             ) : (
               <div key={message.id} className="flex gap-3">
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
+                  <Lightbulb className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   {message.parts.map((part, index) =>

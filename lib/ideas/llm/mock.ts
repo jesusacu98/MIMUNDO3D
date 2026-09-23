@@ -232,7 +232,7 @@ export class MockProvider implements LlmProvider {
         ? batch.length > 0
           ? 'Claro, con eso puedo afinar las ideas. Mira estas otras opciones:'
           : 'Con lo que me cuentas ya te compartí las ideas principales. Si quieres, dime más detalles (medidas, colores, si lleva tu nombre o logo) y las ajustamos.'
-        : theme.intro;
+        : `Soy Fili, tu compañero de ideas de MiMundo3D. ${theme.intro}`; // el "real" (llm/openai.ts) se presenta igual sólo en el primer turno, ver systemPrompt.ts
       yield* this.typeOut(intro, signal);
 
       if (batch.length === 0) {

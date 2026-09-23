@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Download, ImagePlus, Loader2, Upload, Wand2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, ImagePlus, Loader2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
 const inputClass =
@@ -29,8 +29,39 @@ export default function DisenosForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [zoomed, setZoomed] = useState(false);
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
+
+  function openLightbox(index: number) {
+    setZoomed(false);
+    setLightboxIndex(index);
+  }
+
+  function stepLightbox(delta: 1 | -1) {
+    setZoomed(false);
+    setLightboxIndex((i) => (i === null ? i : (i + delta + images.length) % images.length));
+  }
+
+  // Mientras el visor está abierto: Escape cierra, las flechas cambian de variante (arrancando sin
+  // zoom cada vez), y se bloquea el scroll del fondo (mismo patrón que el menú móvil de
+  // AdminSidebar.tsx).
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      else if (e.key === 'ArrowLeft' && images.length > 1) stepLightbox(-1);
+      else if (e.key === 'ArrowRight' && images.length > 1) stepLightbox(1);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stepLightbox es estable entre renders (no depende de estado externo salvo images.length, ya listado)
+  }, [lightboxIndex, images.length]);
 
   // Los blob: de las vistas previas se revocan al quitar cada imagen o al desmontar, para no
   // filtrar memoria. `logosRef` mantiene el listado más reciente disponible en el cleanup final.
@@ -255,9 +286,11 @@ export default function DisenosForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {images.map((src, i) => (
             <div key={i} className="bg-white border border-zinc-200/60 rounded-2xl p-3 space-y-3">
-              {/* Imágenes generadas (data URL en base64), no vienen de un dominio conocido por next/image */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={`Variante ${i + 1}`} className="w-full aspect-square object-contain rounded-xl bg-zinc-50" />
+              <button type="button" onClick={() => openLightbox(i)} className="block w-full cursor-zoom-in">
+                {/* Imágenes generadas (data URL en base64), no vienen de un dominio conocido por next/image */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`Variante ${i + 1}`} className="w-full aspect-square object-contain rounded-xl bg-zinc-50" />
+              </button>
               <a
                 href={src}
                 download={`diseno-${i + 1}.png`}
@@ -275,6 +308,85 @@ export default function DisenosForm() {
         <div className="border border-dashed border-zinc-200 rounded-2xl p-10 text-center text-zinc-400 flex flex-col items-center gap-2">
           <ImagePlus className="w-8 h-8" />
           <p className="text-sm">Los bocetos generados van a aparecer acá.</p>
+        </div>
+      )}
+
+      {lightboxIndex !== null && images[lightboxIndex] && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setLightboxIndex(null)}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIndex(null);
+            }}
+            aria-label="Cerrar"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stepLightbox(-1);
+                }}
+                aria-label="Variante anterior"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stepLightbox(1);
+                }}
+                aria-label="Siguiente variante"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
+
+          <div
+            className={`w-full h-full p-4 sm:p-10 flex items-center justify-center ${zoomed ? 'overflow-auto' : 'overflow-hidden'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={images[lightboxIndex]}
+              alt={`Variante ${lightboxIndex + 1}`}
+              onClick={() => setZoomed((z) => !z)}
+              className={zoomed ? 'max-w-none cursor-zoom-out' : 'max-w-full max-h-full object-contain cursor-zoom-in'}
+            />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomed((z) => !z);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors cursor-pointer"
+            >
+              {zoomed ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+              {zoomed ? 'Ajustar' : 'Zoom'}
+            </button>
+            <a
+              href={images[lightboxIndex]}
+              download={`diseno-${lightboxIndex + 1}.png`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Descargar
+            </a>
+          </div>
         </div>
       )}
     </div>

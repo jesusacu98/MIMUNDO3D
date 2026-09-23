@@ -2,13 +2,14 @@ import Link from "next/link";
 import { Palette, PartyPopper, Target, Lightbulb, ArrowRight, ImageIcon, Sparkles } from "lucide-react";
 import CatalogFooter from "@/app/catalogo/CatalogFooter";
 import SiteHeader from "@/components/SiteHeader";
+import IdeasFab from "@/components/IdeasFab";
 import { HOME_CATEGORIES } from "@/lib/homeCategories";
 import { getFeaturedProducts } from "@/lib/featuredProducts";
 import ProductCarousel from "@/components/ProductCarousel";
 import Reveal from "@/components/Reveal";
 import BannerSlider from "@/components/BannerSlider";
 import { getBanners } from "@/lib/banners";
-import { EXAMPLE_PROMPTS, ideasHrefFor } from "@/lib/ideas/examples";
+import { EXAMPLE_PROMPTS, FILI_TAGLINE, ideasHrefFor } from "@/lib/ideas/examples";
 import { supabase } from "@/lib/supabaseClient";
 
 // Los carruseles de destacados se actualizan sin nuevo deploy (como /catalogo).
@@ -33,6 +34,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900 selection:bg-primary selection:text-white">
       <SiteHeader />
+      <IdeasFab />
 
       {/* Banners administrables (/admin/banners), arriba de todo */}
       {banners.length > 0 && (
@@ -169,6 +171,7 @@ export default async function Home() {
                   <h2 className="mt-5 text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
                     ¿Qué tienes en mente?
                   </h2>
+                  <p className="mt-3 font-semibold text-white">{FILI_TAGLINE}</p>
                   <p className="mt-4 text-white/90 leading-relaxed max-w-xl">
                     Cuéntanos tu problema o lo que quieres lograr, como “quiero ordenar mi escritorio” o “quiero decorar mi sala”, y te damos ideas de artículos. Guarda las que te gusten y mándalas a cotizar por WhatsApp.
                   </p>
