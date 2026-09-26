@@ -27,6 +27,11 @@ export interface Database {
           id: string;
           name: string;
           display_order: number;
+          slug: string | null;
+          description: string | null;
+          headline: string | null;
+          show_on_home: boolean;
+          home_image_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -34,6 +39,11 @@ export interface Database {
           id?: string;
           name: string;
           display_order?: number;
+          slug?: string | null;
+          description?: string | null;
+          headline?: string | null;
+          show_on_home?: boolean;
+          home_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -41,6 +51,11 @@ export interface Database {
           id?: string;
           name?: string;
           display_order?: number;
+          slug?: string | null;
+          description?: string | null;
+          headline?: string | null;
+          show_on_home?: boolean;
+          home_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

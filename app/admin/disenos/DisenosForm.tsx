@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, ImagePlus, Loader2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Download, FileCode, ImagePlus, Loader2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
 const inputClass =
@@ -14,6 +14,37 @@ const CUSTOM_MODEL = '__custom__';
 interface LogoEntry {
   file: File;
   previewUrl: string;
+}
+
+interface StlState {
+  status: 'loading' | 'done' | 'error';
+  error?: string;
+  stl?: string;
+  scad?: string;
+  size?: { x: number; y: number; z: number };
+  warnings?: string[];
+}
+
+// El boceto llega como PNG de 1024px en base64 (varios MB); para el modelo de visión alcanza un
+// JPEG más chico, y así la petición cabe sobrada en el límite de cuerpo de Vercel.
+function shrinkToJpeg(dataUrl: string, maxSide = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('canvas'));
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('imagen'));
+    img.src = dataUrl;
+  });
 }
 
 export default function DisenosForm() {
@@ -31,6 +62,8 @@ export default function DisenosForm() {
   const [images, setImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomed, setZoomed] = useState(false);
+  const [maxSizeMm, setMaxSizeMm] = useState(60);
+  const [stlByIndex, setStlByIndex] = useState<Record<number, StlState>>({});
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
 
@@ -112,6 +145,31 @@ export default function DisenosForm() {
     }
   }
 
+  async function generateStl(index: number) {
+    const src = images[index];
+    if (!src) return;
+    setStlByIndex((prev) => ({ ...prev, [index]: { status: 'loading' } }));
+    try {
+      const image = await shrinkToJpeg(src);
+      const res = await fetch('/api/admin/disenos/stl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, description, maxSizeMm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStlByIndex((prev) => ({ ...prev, [index]: { status: 'error', error: data.error || 'No se pudo generar el STL.' } }));
+        return;
+      }
+      setStlByIndex((prev) => ({
+        ...prev,
+        [index]: { status: 'done', stl: data.stl, scad: data.scad, size: data.size, warnings: data.warnings },
+      }));
+    } catch {
+      setStlByIndex((prev) => ({ ...prev, [index]: { status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' } }));
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) {
@@ -141,6 +199,7 @@ export default function DisenosForm() {
         return;
       }
       setImages(data.images ?? []);
+      setStlByIndex({});
     } catch {
       setError('No se pudo conectar con el servidor. Intentá de nuevo.');
     } finally {
@@ -283,6 +342,27 @@ export default function DisenosForm() {
       </form>
 
       {images.length > 0 && (
+        <div className="bg-white border border-zinc-200/60 rounded-2xl p-4 sm:p-5">
+          <label htmlFor="maxSize" className={labelClass}>
+            Tamaño para el STL (lado más largo, en mm)
+          </label>
+          <input
+            id="maxSize"
+            type="number"
+            min={10}
+            max={300}
+            value={maxSizeMm}
+            onChange={(e) => setMaxSizeMm(Number(e.target.value))}
+            className={`${inputClass} sm:max-w-40`}
+          />
+          <p className={helpClass}>
+            &quot;Generar STL&quot; le pide a la IA que modele la pieza como código OpenSCAD con medidas exactas. Funciona bien con piezas
+            geométricas (llaveros, placas, soportes); las formas orgánicas complejas salen simplificadas. Los logos y textos no se modelan.
+          </p>
+        </div>
+      )}
+
+      {images.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {images.map((src, i) => (
             <div key={i} className="bg-white border border-zinc-200/60 rounded-2xl p-3 space-y-3">
@@ -299,6 +379,49 @@ export default function DisenosForm() {
                 <Download className="w-4 h-4" />
                 Descargar
               </a>
+
+              <button
+                type="button"
+                onClick={() => generateStl(i)}
+                disabled={stlByIndex[i]?.status === 'loading' || !(maxSizeMm >= 10 && maxSizeMm <= 300)}
+                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {stlByIndex[i]?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Box className="w-4 h-4" />}
+                {stlByIndex[i]?.status === 'loading' ? 'Modelando (puede tardar 1-2 min)...' : stlByIndex[i]?.status === 'done' ? 'Volver a generar STL' : 'Generar STL'}
+              </button>
+
+              {stlByIndex[i]?.status === 'error' && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{stlByIndex[i].error}</p>
+              )}
+
+              {stlByIndex[i]?.status === 'done' && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 space-y-2">
+                  <p className="text-xs text-emerald-800">
+                    Listo: {stlByIndex[i].size!.x.toFixed(1)} × {stlByIndex[i].size!.y.toFixed(1)} × {stlByIndex[i].size!.z.toFixed(1)} mm
+                  </p>
+                  {(stlByIndex[i].warnings?.length ?? 0) > 0 && (
+                    <p className="text-xs text-amber-700">Avisos de OpenSCAD: {stlByIndex[i].warnings!.join(' ')} Revisá la pieza en el slicer.</p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={`data:model/stl;base64,${stlByIndex[i].stl}`}
+                      download={`diseno-${i + 1}.stl`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Descargar STL
+                    </a>
+                    <a
+                      href={`data:text/plain;charset=utf-8,${encodeURIComponent(stlByIndex[i].scad ?? '')}`}
+                      download={`diseno-${i + 1}.scad`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-semibold transition-colors"
+                    >
+                      <FileCode className="w-3.5 h-3.5" />
+                      Código .scad
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -6,6 +6,8 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // OpenSCAD compilado a WASM (~11MB): se carga desde node_modules en vez de empaquetarse.
+  serverExternalPackages: ["openscad-wasm-prebuilt"],
   images: {
     remotePatterns: supabaseHostname
       ? [

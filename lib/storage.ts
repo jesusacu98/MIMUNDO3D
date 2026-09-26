@@ -145,3 +145,46 @@ export async function deleteBannerImageIfManaged(imageUrl: string | null | undef
     return;
   }
 }
+
+// Imagen del recuadro de una categoría en el inicio: mismo bucket que los banners, carpeta categorias/.
+const CATEGORY_PREFIX = 'categorias/';
+
+export async function uploadCategoryImage(file: File): Promise<{ url: string } | { error: string }> {
+  if (!file.type.startsWith('image/')) {
+    return { error: 'La imagen de la categoría debe ser una imagen.' };
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return { error: 'La imagen de la categoría no puede pesar más de 10MB.' };
+  }
+
+  const objectPath = CATEGORY_PREFIX + slugifyFileName(file.name);
+
+  const { error } = await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).upload(objectPath, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    return { error: 'No se pudo subir la imagen de la categoría: ' + error.message };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
+
+  return { url: publicUrl };
+}
+
+// Sólo borra lo que subió este admin (categorias/…); una URL pegada a mano no se toca.
+export async function deleteCategoryImageIfManaged(imageUrl: string | null | undefined): Promise<void> {
+  if (!imageUrl) return;
+
+  const marker = `/storage/v1/object/public/${SITE_IMAGES_BUCKET}/`;
+  const markerIndex = imageUrl.indexOf(marker);
+  if (markerIndex === -1) return;
+
+  const objectPath = decodeURIComponent(imageUrl.slice(markerIndex + marker.length));
+  if (!objectPath.startsWith(CATEGORY_PREFIX)) return;
+
+  await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).remove([objectPath]);
+}

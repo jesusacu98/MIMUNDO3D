@@ -2,11 +2,13 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { HOME_CATEGORIES } from '@/lib/homeCategories';
+import { getSiteCategories } from '@/lib/siteCategories';
 import { getBanners } from '@/lib/banners';
 import BannerSlider from '@/components/BannerSlider';
 import SiteHeader from '@/components/SiteHeader';
 import IdeasFab from '@/components/IdeasFab';
+import IdeasCta from '@/components/IdeasCta';
+import CategoryHero from '@/components/CategoryHero';
 import CatalogFooter from '../../catalogo/CatalogFooter';
 import CategoryProducts, { type CategoryProduct } from './CategoryProducts';
 
@@ -19,7 +21,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
   const { categoria } = await params;
   const { tipo, min, max } = await searchParams;
 
-  const homeCategory = HOME_CATEGORIES.find((c) => c.slug === categoria);
+  const homeCategory = (await getSiteCategories()).find((c) => c.slug === categoria);
   if (!homeCategory) notFound();
 
   const { data: categoryRow } = await supabase
@@ -77,15 +79,13 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
             <BannerSlider banners={banners} />
           </div>
         )}
-        <div className="text-left mb-10">
-          {homeCategory.headline && (
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">{homeCategory.dbName}</span>
-          )}
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 mt-1 mb-3">
-            {homeCategory.headline ?? homeCategory.dbName}
-          </h1>
-          <p className="text-zinc-600 max-w-2xl leading-relaxed">{homeCategory.description}</p>
-        </div>
+        <CategoryHero
+          slug={homeCategory.slug}
+          name={homeCategory.dbName}
+          headline={homeCategory.headline}
+          description={homeCategory.description}
+          productCount={products.length}
+        />
 
         <CategoryProducts
           products={products}
@@ -96,7 +96,9 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
           initialMax={max ?? ''}
         />
 
-        <div className="mt-10 text-center">
+        <IdeasCta />
+
+        <div className="mt-8 text-center">
           <Link href="/catalogo" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-dark">
             Ver todo el catálogo
             <ArrowRight className="w-4 h-4" />

@@ -65,6 +65,16 @@ body {
   }
 }
 
+/* Línea que se dibuja de izquierda a derecha. */
+@keyframes draw-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Aparición al hacer scroll (ver components/Reveal.tsx). */
 .reveal {
   opacity: 0;
@@ -82,6 +92,11 @@ body {
 /* Entrada escalonada de tarjetas (filtros). `backwards` para no pisar el hover después. */
 .animate-fade-up {
   animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+.animate-draw-line {
+  animation: draw-line 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   animation-delay: var(--delay, 0ms);
 }
 
@@ -131,6 +146,7 @@ body {
   }
   .animate-fade-up,
   .animate-shimmer,
+  .animate-draw-line,
   .dot-progress {
     animation: none;
   }

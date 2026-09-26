@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { HOME_CATEGORIES } from '@/lib/homeCategories';
+import { getSiteCategories } from '@/lib/siteCategories';
 import BannerForm from '../BannerForm';
 import { createBanner } from '../actions';
 
@@ -26,7 +26,7 @@ export default async function NuevoBannerPage({ searchParams }: PageProps) {
 
   const { data: categoriesData } = await supabaseAdmin.from('product_categories').select('id, name');
   // Sólo las categorías con página propia (/categorias/[slug]) e imagen en el inicio.
-  const pageCategoryNames = new Set(HOME_CATEGORIES.map((c) => c.dbName));
+  const pageCategoryNames = new Set((await getSiteCategories()).map((c) => c.dbName));
   const categories = (categoriesData ?? []).filter((c) => pageCategoryNames.has(c.name));
 
   const { data: maxOrderRow } = await supabaseAdmin

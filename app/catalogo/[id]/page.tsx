@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { HOME_CATEGORIES } from '@/lib/homeCategories';
+import { getSiteCategories } from '@/lib/siteCategories';
 import SiteHeader from '@/components/SiteHeader';
 import IdeasFab from '@/components/IdeasFab';
 import CatalogFooter from '../CatalogFooter';
@@ -20,7 +20,8 @@ export default async function ProductoDetalle({ params, searchParams }: PageProp
   const { desde, tipo, min, max } = await searchParams;
 
   // Si llegó desde una página de categoría, "volver" regresa ahí y no al catálogo.
-  const fromCategory = HOME_CATEGORIES.find((c) => c.slug === desde);
+  const siteCategories = await getSiteCategories();
+  const fromCategory = siteCategories.find((c) => c.slug === desde);
   const fromHome = desde === 'inicio';
   const searchQuery = fromCategory
     ? [tipo && `tipo=${encodeURIComponent(tipo)}`, min && `min=${encodeURIComponent(min)}`, max && `max=${encodeURIComponent(max)}`]
@@ -88,7 +89,12 @@ export default async function ProductoDetalle({ params, searchParams }: PageProp
       <SiteHeader />
       <IdeasFab />
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 min-w-0">
-        <ProductDetailClient product={productForDetail} backHref={backHref} backLabel={backLabel} />
+        <ProductDetailClient
+          product={productForDetail}
+          backHref={backHref}
+          backLabel={backLabel}
+          categorySlug={siteCategories.find((c) => c.dbName === productForDetail.category)?.slug}
+        />
         {similarProducts.length > 0 && (
           <section className="mt-16 pt-12 border-t border-zinc-200">
             <ProductCarousel title="Productos similares" products={similarProducts} fromQuery={fromQuery} autoScroll />

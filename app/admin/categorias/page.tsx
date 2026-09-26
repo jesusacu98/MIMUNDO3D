@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Eye, EyeOff } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import DeleteCategoryButton from './DeleteCategoryButton';
-import { deleteCategory } from './actions';
+import { deleteCategory, setCategoryOnHome } from './actions';
 
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
@@ -22,12 +22,19 @@ export default async function AdminCategoriasPage({ searchParams }: PageProps) {
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const { data: categoriesData } = await supabaseAdmin
+  const { data: categoriesData, error: categoriesError } = await supabaseAdmin
     .from('product_categories')
-    .select('id, name, display_order')
+    .select('id, name, display_order, show_on_home')
     .order('display_order', { ascending: true });
 
-  const categories = categoriesData ?? [];
+  // Si todavía no se corrió supabase/schema_catalog_v8.sql la columna show_on_home no existe:
+  // se lista igual, sin el interruptor del inicio.
+  const needsMigration = Boolean(categoriesError);
+  const categories = categoriesError
+    ? ((await supabaseAdmin.from('product_categories').select('id, name, display_order').order('display_order', { ascending: true })).data ?? []).map(
+        (c) => ({ ...c, show_on_home: false }),
+      )
+    : (categoriesData ?? []);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -46,6 +53,12 @@ export default async function AdminCategoriasPage({ searchParams }: PageProps) {
           </Link>
         </div>
 
+        {needsMigration && (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+            Para elegir qué categorías salen en el inicio, corre <code>supabase/schema_catalog_v8.sql</code> en el SQL Editor de Supabase.
+          </p>
+        )}
+
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">{error}</p>}
 
         <div className="bg-white border border-zinc-200/60 rounded-2xl overflow-hidden">
@@ -54,6 +67,7 @@ export default async function AdminCategoriasPage({ searchParams }: PageProps) {
               <tr>
                 <th className="text-left px-5 py-3 font-semibold">Nombre</th>
                 <th className="text-left px-5 py-3 font-semibold">Orden</th>
+                <th className="text-left px-5 py-3 font-semibold">En el inicio</th>
                 <th className="px-5 py-3" />
                 <th className="px-5 py-3" />
               </tr>
@@ -63,6 +77,26 @@ export default async function AdminCategoriasPage({ searchParams }: PageProps) {
                 <tr key={category.id} className="hover:bg-zinc-50/60">
                   <td className="px-5 py-3 font-medium text-zinc-900">{category.name}</td>
                   <td className="px-5 py-3 text-zinc-600">{category.display_order}</td>
+                  <td className="px-5 py-3">
+                    {needsMigration ? (
+                      <span className="text-zinc-400">—</span>
+                    ) : (
+                      <form action={setCategoryOnHome.bind(null, category.id, !category.show_on_home)}>
+                        <button
+                          type="submit"
+                          title={category.show_on_home ? 'Ocultar del inicio' : 'Mostrar en el inicio'}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors cursor-pointer ${
+                            category.show_on_home
+                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                          }`}
+                        >
+                          {category.show_on_home ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          {category.show_on_home ? 'Visible' : 'Oculta'}
+                        </button>
+                      </form>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <Link
                       href={`/admin/categorias/${category.id}/editar`}
@@ -79,7 +113,7 @@ export default async function AdminCategoriasPage({ searchParams }: PageProps) {
               ))}
               {categories.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-zinc-500">
+                  <td colSpan={5} className="px-5 py-10 text-center text-zinc-500">
                     Todavía no hay categorías.
                   </td>
                 </tr>

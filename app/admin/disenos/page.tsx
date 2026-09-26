@@ -26,7 +26,8 @@ export default async function DisenosPage() {
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-2">Generador de diseños</h1>
           <p className="text-zinc-600">
             Describí qué querés diseñar (ej. &quot;llavero con forma de gato&quot;), sumá un logo si aplica, y generá bocetos de
-            referencia pensados para ser imprimibles en FDM. No genera el modelo 3D — el modelado sigue siendo a mano.
+            referencia pensados para ser imprimibles en FDM. Cuando uno te guste, &quot;Generar STL&quot; lo modela como código
+            OpenSCAD con medidas exactas (mejor para piezas geométricas que para figuras orgánicas).
           </p>
         </div>
 

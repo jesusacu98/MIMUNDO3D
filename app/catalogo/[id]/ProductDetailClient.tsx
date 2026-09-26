@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { HOME_CATEGORIES } from '@/lib/homeCategories';
 import { event } from '@/lib/gtag';
 import type { Product } from '../types';
 import { formatPrice } from '../types';
@@ -17,9 +16,10 @@ interface ProductDetailClientProps {
   product: Product;
   backHref: string;
   backLabel: string;
+  categorySlug?: string;
 }
 
-export default function ProductDetailClient({ product, backHref, backLabel }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, backHref, backLabel, categorySlug }: ProductDetailClientProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [customName, setCustomName] = useState('');
   const [businessName, setBusinessName] = useState('');
@@ -33,7 +33,6 @@ export default function ProductDetailClient({ product, backHref, backLabel }: Pr
   }, [product.id]);
 
 
-  const categorySlug = HOME_CATEGORIES.find((c) => c.dbName === product.category)?.slug;
   const currentImage = product.images[selectedImageIndex] ?? product.image;
 
   return (

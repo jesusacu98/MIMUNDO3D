@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ImagePlus, Upload } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 import { placementKey } from '@/lib/banners';
 
@@ -27,10 +28,8 @@ interface BannerFormProps {
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
 const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
-const fileClass =
-  'w-full text-sm text-zinc-600 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer';
-
-// Vista previa de un archivo recién elegido, o de la imagen ya guardada.
+// Zona para arrastrar y soltar una imagen (o hacer clic para elegirla), con vista previa del archivo
+// nuevo o de la imagen ya guardada.
 function ImagePicker({
   name,
   label,
@@ -46,7 +45,12 @@ function ImagePicker({
   required?: boolean;
   aspectClass: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -56,29 +60,114 @@ function ImagePicker({
 
   const src = previewUrl ?? currentUrl ?? null;
 
+  function showFile(file: File | null) {
+    setDropError(null);
+    setPreviewUrl(file ? URL.createObjectURL(file) : null);
+    setFileName(file ? file.name : null);
+  }
+
+  // Un archivo soltado no pasa solo al <input>: se le asigna con DataTransfer para que el
+  // formulario lo envíe igual que uno elegido con el selector.
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+
+    const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith('image/'));
+    if (!file) {
+      setDropError('Suelta un archivo de imagen (JPG, PNG, WebP...).');
+      return;
+    }
+    if (inputRef.current) {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      inputRef.current.files = transfer.files;
+    }
+    showFile(file);
+  }
+
+  function handleDragEnter(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current += 1;
+    setDragActive(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setDragActive(false);
+    }
+  }
+
   return (
     <div>
       <span className={labelClass}>
         {label} {required && <span className="text-primary">*</span>}
       </span>
-      {src && (
-        <div className={`mt-2 ${aspectClass} rounded-xl overflow-hidden border border-zinc-200 bg-zinc-100`}>
-          {/* Vista previa de un archivo local (blob:) o de Supabase Storage. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="Vista previa" className="w-full h-full object-cover" />
-        </div>
-      )}
+
+      {/* sr-only (no hidden): un campo obligatorio oculto con display:none bloquea el envío sin mostrar el aviso. */}
       <input
+        ref={inputRef}
         name={name}
         type="file"
         accept="image/*"
         required={required}
-        onChange={(e) => {
-          const file = e.target.files?.[0] ?? null;
-          setPreviewUrl(file ? URL.createObjectURL(file) : null);
-        }}
-        className={`${fileClass} mt-3`}
+        onChange={(e) => showFile(e.target.files?.[0] ?? null)}
+        className="sr-only"
+        tabIndex={-1}
       />
+
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`Elegir o arrastrar: ${label}`}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
+        onDragEnter={handleDragEnter}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`group relative mt-2 ${aspectClass} overflow-hidden rounded-xl border-2 cursor-pointer transition-colors ${
+          dragActive ? 'border-primary bg-primary/5' : src ? 'border-zinc-200 bg-zinc-100' : 'border-dashed border-zinc-300 bg-zinc-50 hover:border-zinc-400'
+        }`}
+      >
+        {src && (
+          // Vista previa de un archivo local (blob:) o de Supabase Storage.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="Vista previa" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+
+        {(!src || dragActive) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
+            {dragActive ? <Upload className="h-7 w-7 text-primary" /> : <ImagePlus className="h-7 w-7 text-zinc-400" />}
+            <p className="text-sm text-zinc-600">
+              {dragActive ? (
+                <span className="font-medium text-primary">Suelta la imagen aquí</span>
+              ) : (
+                <>
+                  Arrastra una imagen aquí o <span className="font-medium text-primary">haz clic para elegirla</span>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
+        {src && !dragActive && (
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/55 px-4 text-center text-sm font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            Arrastra otra imagen o haz clic para cambiarla
+          </div>
+        )}
+      </div>
+
+      {fileName && <p className="mt-2 text-xs text-zinc-600">Nueva imagen: {fileName}</p>}
+      {dropError && <p className="mt-2 text-xs text-red-600">{dropError}</p>}
       <p className="text-xs text-zinc-500 mt-1.5">{hint}</p>
     </div>
   );

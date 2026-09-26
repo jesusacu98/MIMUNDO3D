@@ -24,8 +24,13 @@ export default async function EditarCategoriaPage({ params, searchParams }: Page
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const { data: category } = await supabase.from('product_categories').select('id, name, display_order').eq('id', id).maybeSingle();
+  const { data: category, error: categoryError } = await supabase.from('product_categories').select('id, name, display_order, slug, description, headline, show_on_home, home_image_url').eq('id', id).maybeSingle();
 
+  if (categoryError) {
+    redirect(
+      `/admin/categorias?error=${encodeURIComponent('Falta actualizar la base de datos: corre supabase/schema_catalog_v8.sql en el SQL Editor de Supabase.')}`,
+    );
+  }
   if (!category) notFound();
 
   const updateCategoryWithId = updateCategory.bind(null, id);
@@ -43,7 +48,15 @@ export default async function EditarCategoriaPage({ params, searchParams }: Page
           action={updateCategoryWithId}
           error={error}
           submitLabel="Guardar cambios"
-          initialValues={{ name: category.name, display_order: category.display_order }}
+          initialValues={{
+            name: category.name,
+            display_order: category.display_order,
+            slug: category.slug,
+            description: category.description,
+            headline: category.headline,
+            show_on_home: category.show_on_home,
+            home_image_url: category.home_image_url,
+          }}
         />
       </main>
     </div>
