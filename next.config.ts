@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
     "/api/admin/anuncios/generate": ["./assets/fonts/**/*", "./public/logo.png"],
   },
   images: {
+    // Sin optimizador de Vercel: su cuota gratis se agotó y las imágenes devolvían 402 «Payment
+    // required» al azar (catálogo y admin). Las fotos se sirven directo desde Supabase Storage, ya
+    // reducidas al subirlas (lib/storage.ts). Para volver al optimizador, quitar esta línea.
+    unoptimized: true,
     remotePatterns: supabaseHostname
       ? [
           {
