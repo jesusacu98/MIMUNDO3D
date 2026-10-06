@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Megaphone,
   Menu,
   Package,
   PiggyBank,
@@ -67,6 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/calculadora', label: 'Calculadora de costos', icon: Calculator },
       { href: '/admin/qr', label: 'Generador de QR', icon: QrCode },
       { href: '/admin/disenos', label: 'Generador de diseños', icon: Wand2 },
+      { href: '/admin/anuncios', label: 'Generador de anuncios', icon: Megaphone },
     ],
   },
 ];

@@ -575,6 +575,57 @@ export interface Database {
         };
         Relationships: [];
       };
+      ad_creatives: {
+        Row: {
+          id: string;
+          ad_type: string;
+          style: string;
+          format: string;
+          product_ids: string[];
+          product_names: string[];
+          options: unknown;
+          image_urls: string[];
+          caption: string;
+          variants: unknown;
+          hashtags: string[];
+          whatsapp_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          ad_type: string;
+          style: string;
+          format: string;
+          product_ids?: string[];
+          product_names?: string[];
+          options?: unknown;
+          image_urls?: string[];
+          caption?: string;
+          variants?: unknown;
+          hashtags?: string[];
+          whatsapp_text?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          ad_type?: string;
+          style?: string;
+          format?: string;
+          product_ids?: string[];
+          product_names?: string[];
+          options?: unknown;
+          image_urls?: string[];
+          caption?: string;
+          variants?: unknown;
+          hashtags?: string[];
+          whatsapp_text?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       idea_settings: {
         Row: {
           key: string;

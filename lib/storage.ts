@@ -188,3 +188,38 @@ export async function deleteCategoryImageIfManaged(imageUrl: string | null | und
 
   await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).remove([objectPath]);
 }
+
+// Láminas de los anuncios generados en /admin/anuncios: mismo bucket que los banners, carpeta anuncios/.
+const AD_PREFIX = 'anuncios/';
+
+export async function uploadAdImage(png: Buffer, baseName: string): Promise<{ url: string } | { error: string }> {
+  const objectPath = AD_PREFIX + slugifyFileName(baseName + '.png');
+
+  const { error } = await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).upload(objectPath, png, {
+    contentType: 'image/png',
+    upsert: false,
+  });
+
+  if (error) {
+    return { error: 'No se pudo guardar la imagen del anuncio: ' + error.message };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
+
+  return { url: publicUrl };
+}
+
+// Sólo borra lo que generó este módulo (anuncios/…).
+export async function deleteAdImagesIfManaged(imageUrls: string[]): Promise<void> {
+  const marker = `/storage/v1/object/public/${SITE_IMAGES_BUCKET}/`;
+  const paths = imageUrls
+    .map((url) => {
+      const i = url.indexOf(marker);
+      return i === -1 ? '' : decodeURIComponent(url.slice(i + marker.length));
+    })
+    .filter((p) => p.startsWith(AD_PREFIX));
+  if (paths.length === 0) return;
+  await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).remove(paths);
+}

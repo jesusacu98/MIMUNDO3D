@@ -17,11 +17,18 @@ function withinCooldown(key: string): boolean {
   return last !== undefined && Date.now() - last < COOLDOWN_MS;
 }
 
-export type AiErrorOrigin = 'ideas' | 'disenos';
+export type AiErrorOrigin = 'ideas' | 'disenos' | 'anuncios';
 
 const ORIGIN_LABEL: Record<AiErrorOrigin, string> = {
   ideas: 'el chat de ideas (/ideas)',
   disenos: 'el generador de diseños (/admin/disenos)',
+  anuncios: 'el generador de anuncios (/admin/anuncios)',
+};
+
+const ORIGIN_SHORT: Record<AiErrorOrigin, string> = {
+  ideas: 'el chat de ideas',
+  disenos: 'el generador de diseños',
+  anuncios: 'el generador de anuncios',
 };
 
 /**
@@ -39,7 +46,7 @@ export async function notifyAiError(origin: AiErrorOrigin, error: unknown): Prom
   lastSentAt.set(origin, Date.now());
 
   const detail = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
-  const subject = `⚠️ MIMUNDO3D: error de IA en ${origin === 'ideas' ? 'el chat de ideas' : 'el generador de diseños'}`;
+  const subject = `⚠️ MIMUNDO3D: error de IA en ${ORIGIN_SHORT[origin]}`;
   const text = `Falló una llamada a IA en ${ORIGIN_LABEL[origin]}.\n\n${detail}`;
 
   try {

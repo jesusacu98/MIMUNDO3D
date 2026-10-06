@@ -7,6 +7,7 @@ import { useIsAdmin } from '@/lib/useIsAdmin';
 import ProductThumbnail from '../../catalogo/ProductThumbnail';
 import { formatPrice, type Product } from '../../catalogo/types';
 import CopyLinkButton from './CopyLinkButton';
+import DownloadImagesButton from './DownloadImagesButton';
 
 export interface CategoryProduct extends Product {
   subcategory: string | null;
@@ -138,6 +139,12 @@ export default function CategoryProducts({ products, subcategoryOrder, categoryS
           <div className="flex items-center justify-between gap-3 mb-3">
             <span className="text-sm font-bold text-zinc-950">Filtros</span>
             <div className="flex items-center gap-4">
+              {isAdmin && (
+                <DownloadImagesButton
+                  items={filtered.map((p) => ({ name: p.name, url: p.image }))}
+                  zipName={`imagenes-${categorySlug}`}
+                />
+              )}
               {isAdmin && <CopyLinkButton />}
               {hasActiveFilters && (
                 <button

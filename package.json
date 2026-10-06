@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.127.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.110.7",
+    "fflate": "^0.8.3",
     "lucide-react": "^1.25.0",
     "next": "16.2.10",
     "nodemailer": "^10.0.10",
@@ -19,7 +20,8 @@
     "openscad-wasm-prebuilt": "^1.2.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
