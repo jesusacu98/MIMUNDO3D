@@ -256,3 +256,20 @@ export async function deleteAdImagesIfManaged(imageUrls: string[]): Promise<void
   if (paths.length === 0) return;
   await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).remove(paths);
 }
+
+// Instagram sólo acepta JPEG: al publicar un anuncio se sube una copia JPEG temporal de cada lámina
+// (anuncios/pub/…) para que Meta la descargue por URL pública, y se borra al terminar.
+export async function uploadAdJpeg(jpeg: Buffer, baseName: string): Promise<{ url: string } | { error: string }> {
+  const objectPath = AD_PREFIX + 'pub/' + slugifyFileName(baseName + '.jpg');
+
+  const { error } = await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).upload(objectPath, jpeg, {
+    contentType: 'image/jpeg',
+    upsert: false,
+  });
+  if (error) return { error: 'No se pudo preparar la imagen para publicar: ' + error.message };
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
+  return { url: publicUrl };
+}

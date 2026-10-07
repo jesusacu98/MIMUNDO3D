@@ -17,6 +17,8 @@ import {
   type AdStyleId,
   type AdTypeId,
 } from '@/lib/anuncios/config';
+import type { SocialSettingsView } from '@/lib/social/settings';
+import PublishPanel from './PublishPanel';
 
 export interface PickerProduct {
   id: string;
@@ -92,11 +94,13 @@ export default function AnunciosClient({
   initialHistory,
   historyMissing,
   aiEnabled,
+  social,
 }: {
   products: PickerProduct[];
   initialHistory: AdRecord[];
   historyMissing: boolean;
   aiEnabled: boolean;
+  social: SocialSettingsView;
 }) {
   const [type, setType] = useState<AdTypeId>('destacado');
   const [styleId, setStyleId] = useState<AdStyleId>('llamativo');
@@ -455,7 +459,7 @@ export default function AnunciosClient({
 
       {/* Resultado */}
       <div ref={resultRef} className="scroll-mt-6">
-        {current && <ResultPanel key={current.id + current.createdAt} ad={current} onSaved={onSaved} />}
+        {current && <ResultPanel key={current.id + current.createdAt} ad={current} social={social} onSaved={onSaved} />}
       </div>
 
       {/* Historial */}
@@ -522,7 +526,7 @@ function CopyButton({ text, label = 'Copiar' }: { text: string; label?: string }
   );
 }
 
-function ResultPanel({ ad, onSaved }: { ad: AdRecord; onSaved: (ad: AdRecord) => void }) {
+function ResultPanel({ ad, social, onSaved }: { ad: AdRecord; social: SocialSettingsView; onSaved: (ad: AdRecord) => void }) {
   const [caption, setCaption] = useState(ad.caption);
   const [whatsapp, setWhatsapp] = useState(ad.whatsappText);
   const [tags, setTags] = useState(ad.hashtags);
@@ -697,6 +701,8 @@ function ResultPanel({ ad, onSaved }: { ad: AdRecord; onSaved: (ad: AdRecord) =>
           {saved ? 'Guardado' : 'Guardar cambios en el historial'}
         </button>
       </div>
+
+      <PublishPanel ad={ad} social={social} instagramText={instagramText} facebookText={facebookText} onPublished={onSaved} />
       {zoom !== null && <Lightbox ad={ad} index={zoom} onChange={setZoom} onClose={() => setZoom(null)} />}
     </section>
   );

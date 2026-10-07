@@ -237,6 +237,15 @@ export function formatPrice(value: number): string {
   return '$' + rounded.toLocaleString('es-MX', { maximumFractionDigits: 2 });
 }
 
+/** Una publicación hecha desde el admin (Instagram o Facebook). */
+export interface AdPublication {
+  network: 'instagram' | 'facebook';
+  kind: 'post' | 'story';
+  id: string;
+  url: string | null;
+  at: string;
+}
+
 /** Un anuncio guardado en el historial (fila de `ad_creatives`). */
 export interface AdRecord {
   id: string;
@@ -251,5 +260,6 @@ export interface AdRecord {
   variants: { label: string; text: string }[];
   hashtags: string[];
   whatsappText: string;
+  published: AdPublication[];
   createdAt: string;
 }

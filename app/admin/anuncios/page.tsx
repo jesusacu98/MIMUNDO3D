@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getIdeaSettings } from '@/lib/ideas/settings';
+import { getSocialSettings, toSafeView } from '@/lib/social/settings';
 import { toAdRecord } from '@/lib/anuncios/history';
 import AnunciosClient, { type PickerProduct } from './AnunciosClient';
 
@@ -19,7 +20,7 @@ export default async function AnunciosPage() {
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const [{ data: productRows }, { data: categoryRows }, historyResult, settings] = await Promise.all([
+  const [{ data: productRows }, { data: categoryRows }, historyResult, settings, socialSettings] = await Promise.all([
     supabaseAdmin
       .from('products')
       .select('id, name, price, is_starting_price, image_url, category_id, is_new, is_promo')
@@ -28,6 +29,7 @@ export default async function AnunciosPage() {
     supabaseAdmin.from('product_categories').select('id, name').order('display_order', { ascending: true }),
     supabaseAdmin.from('ad_creatives').select('*').order('created_at', { ascending: false }).limit(HISTORY_LIMIT),
     getIdeaSettings(),
+    getSocialSettings(),
   ]);
 
   const categoryName = new Map((categoryRows ?? []).map((c) => [c.id, c.name]));
@@ -65,7 +67,7 @@ export default async function AnunciosPage() {
           </p>
         </div>
 
-        <AnunciosClient products={products} initialHistory={history} historyMissing={historyMissing} aiEnabled={Boolean(settings.apiKey) && settings.provider !== 'mock'} />
+        <AnunciosClient products={products} initialHistory={history} historyMissing={historyMissing} aiEnabled={Boolean(settings.apiKey) && settings.provider !== 'mock'} social={toSafeView(socialSettings)} />
       </main>
     </div>
   );

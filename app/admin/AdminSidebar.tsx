@@ -20,6 +20,7 @@ import {
   PiggyBank,
   QrCode,
   Settings,
+  Share2,
   Sparkles,
   Tags,
   Users,
@@ -69,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/qr', label: 'Generador de QR', icon: QrCode },
       { href: '/admin/disenos', label: 'Generador de diseños', icon: Wand2 },
       { href: '/admin/anuncios', label: 'Generador de anuncios', icon: Megaphone },
+      { href: '/admin/redes', label: 'Redes sociales', icon: Share2 },
     ],
   },
 ];

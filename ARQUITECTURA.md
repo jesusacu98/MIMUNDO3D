@@ -414,3 +414,24 @@ Publicar directo en Meta (ver nota de investigación en memoria), programar publ
 ### Composición creativa por estilo (2026-10-06)
 
 Por pedido del dueño la foto ocupa gran parte de la lámina y cada estilo compone distinto (`singleGeom`/`singleSlide` en `lib/anuncios/templates.tsx`): **llamativo** = fondo rosa liso (sin degradados), la foto ENTERA con su proporción original en un marco blanco ladeado sobre un bloque amarillo, con sellos (`naturalPhoto: true` en el estilo → `loadProductPhotoNatural`, sin recorte ni relleno desenfocado); **profesional** = foto a sangre con panel blanco de esquinas redondas encima; **premium** = foto a lienzo completo con degradado negro y marco; **minimalista** = foto grande con bloque rosa desplazado y tarjeta blanca de texto montada; **cálido** = foto en arco con contorno; **crudo** = polaroid enorme ladeada sobre cinta de papel. La portada del carrusel usa tarjetas ladeadas y encimadas (`COVER_CARDS`). Logo, contador y sellos (`-X%`, «¡NUEVO!») flotan sobre la foto. En `loadProductPhoto` (`lib/anuncios/assets.ts`) la foto se recorta sólo si se pierde ≤10 %; si no, va completa sobre una copia desenfocada con los bordes difuminados.
+
+## 16. Publicar anuncios directo en Instagram y Facebook (`/admin/redes`, 2026-10-07)
+
+Desde el resultado de `/admin/anuncios` se publica el anuncio en la Página de Facebook y en Instagram sin descargar ni copiar nada. Verificado contra developers.facebook.com el 2026-10-07 (Instagram: sólo JPEG, imagen en URL pública, carrusel de hasta 10 imágenes que cuenta como una publicación, 100 publicaciones por API cada 24 h; Página: `/{page}/photos`, `/{page}/feed` con `attached_media`, `/{page}/photo_stories`).
+
+### Conexión (`/admin/redes`)
+
+- Tabla `social_settings` (`supabase/schema_social.sql`, correr a mano; clave/valor como `notify_settings`): `page_id`, `page_name`, `page_token`, `ig_user_id`, `ig_username`, `app_id`, `connected_at`. **El token de la Página nunca llega al navegador** (`toSafeView()` en `lib/social/settings.ts`). El App Secret ni siquiera se guarda.
+- Flujo sin OAuth con redirección (un solo dueño): el admin pega el ID y la clave secreta de su app de Meta y un token de usuario del Explorador de la Graph API; `POST /api/admin/redes/connect` lo cambia por uno de larga duración (`fb_exchange_token`), lista las Páginas con su Instagram vinculado (`/me/accounts?fields=…instagram_business_account`) y guarda el **token de la Página elegida, que no vence** (si se obtiene de un token de usuario de larga duración). Para publicar en las propias cuentas basta ser administrador de la app (Standard Access), sin enviarla a revisión.
+- Permisos del token de usuario: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish` (+ `business_management` si la Página está en un Portafolio comercial).
+
+### Publicar (`POST /api/admin/anuncios/[id]/publish`)
+
+1. Re-verifica el rol admin, lee el anuncio y la conexión. `lib/social/prepare.ts` convierte cada lámina PNG a JPEG (Instagram no acepta PNG) y la sube a `imagenes_sitio/anuncios/pub/` (copia temporal pública que Meta descarga por URL); se borra al terminar.
+2. `lib/social/meta.ts` (sólo `fetch`, Graph `v25.0`): **Instagram** = contenedor en `/{ig}/media` → espera `status_code=FINISHED` → `/{ig}/media_publish` (carrusel: un contenedor hijo por imagen con `is_carousel_item`, luego el contenedor `CAROUSEL`); historia = `media_type=STORIES`. **Facebook** = una foto con `/photos`; varias = fotos con `published=false` + `/feed` con `attached_media`; historia = foto sin publicar + `/photo_stories`.
+3. Cada red es independiente: si una falla no tumba a la otra, y el resultado por red (con los enlaces) vuelve a la pantalla. Las historias salen una por lámina y las ya publicadas se conservan si falla alguna. Lo publicado se guarda en `ad_creatives.published` y se muestra en "Ya publicado" (con advertencia antes de repetir).
+4. Los errores de Meta se muestran tal cual (`MetaError`, usa `error_user_msg` cuando existe). `META_GRAPH_BASE_URL` (sólo pruebas, como `OPENAI_BASE_URL`) permite apuntar a un servidor simulado.
+
+### Pendiente / fuera de alcance
+
+Programar publicaciones, video/Reels, y OAuth con botón «Conectar con Facebook» (ahora se pega el token a mano). Si el token se revoca (cambio de contraseña, se quita la app), hay que volver a conectar desde `/admin/redes`.

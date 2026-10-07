@@ -1,5 +1,5 @@
 import type { Database } from '@/lib/database.types';
-import type { AdFormatId, AdOptions, AdRecord, AdStyleId, AdTypeId } from './config';
+import type { AdFormatId, AdOptions, AdPublication, AdRecord, AdStyleId, AdTypeId } from './config';
 
 type AdRow = Database['public']['Tables']['ad_creatives']['Row'];
 
@@ -17,6 +17,7 @@ export function toAdRecord(row: AdRow): AdRecord {
     variants: Array.isArray(row.variants) ? (row.variants as AdRecord['variants']) : [],
     hashtags: row.hashtags ?? [],
     whatsappText: row.whatsapp_text,
+    published: Array.isArray(row.published) ? (row.published as AdPublication[]) : [],
     createdAt: row.created_at,
   };
 }

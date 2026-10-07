@@ -589,6 +589,7 @@ export interface Database {
           variants: unknown;
           hashtags: string[];
           whatsapp_text: string;
+          published: unknown;
           created_at: string;
           updated_at: string;
         };
@@ -605,6 +606,7 @@ export interface Database {
           variants?: unknown;
           hashtags?: string[];
           whatsapp_text?: string;
+          published?: unknown;
           created_at?: string;
           updated_at?: string;
         };
@@ -621,7 +623,26 @@ export interface Database {
           variants?: unknown;
           hashtags?: string[];
           whatsapp_text?: string;
+          published?: unknown;
           created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      social_settings: {
+        Row: {
+          key: string;
+          value: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: string | null;
           updated_at?: string;
         };
         Relationships: [];
