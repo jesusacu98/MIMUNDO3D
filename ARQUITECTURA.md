@@ -435,3 +435,9 @@ Desde el resultado de `/admin/anuncios` se publica el anuncio en la Página de F
 ### Pendiente / fuera de alcance
 
 Programar publicaciones, video/Reels, y OAuth con botón «Conectar con Facebook» (ahora se pega el token a mano). Si el token se revoca (cambio de contraseña, se quita la app), hay que volver a conectar desde `/admin/redes`.
+
+### Vencimiento de la conexión (2026-10-07)
+
+El token de la Página no vence (`debug_token` → `expires_at: 0`), pero Meta fija una **fecha de acceso a datos** (`data_access_expires_at`, ~90 días desde que se autorizó la app) tras la cual puede pedir volver a autorizar. `lib/social/health.ts` la lee en vivo con `inspectToken()` (`debug_token` con el propio token, sin App Secret; caché de 10 min) y: la muestra en `/admin/redes` («Reconectar antes del …»), pone un aviso en `/admin/anuncios` cuando faltan ≤30 días o el token ya no es válido, y manda un correo al dueño (`sendOwnerEmail`, SMTP de `/admin/notificaciones`) cuando faltan ≤14 días o la conexión dejó de ser válida, como mucho cada 3 días (marca `expiry_alert_at` en `social_settings`). El correo se revisa al abrir esas dos pantallas: no hay cron. Qué pasa exactamente al llegar a la fecha en una app en modo desarrollo no está verificado; por eso se avisa con anticipación.
+
+El App Secret y el token de usuario del Explorador **no se guardan** (sólo viajan por HTTPS en la petición de conexión y se descartan; sin `console.log` de ellos). Se guardan el `app_id` (público) y el token de la Página (sensible, en `social_settings`, sólo service role).

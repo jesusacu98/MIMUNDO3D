@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getIdeaSettings } from '@/lib/ideas/settings';
 import { getSocialSettings, toSafeView } from '@/lib/social/settings';
+import { alertIfExpiring, getConnectionHealth } from '@/lib/social/health';
 import { toAdRecord } from '@/lib/anuncios/history';
 import AnunciosClient, { type PickerProduct } from './AnunciosClient';
 
@@ -46,6 +47,9 @@ export default async function AnunciosPage() {
       isPromo: p.is_promo,
     }));
 
+  const socialHealth = await getConnectionHealth(socialSettings);
+  await alertIfExpiring(socialHealth);
+
   // Si la tabla del historial todavía no existe (no se corrió schema_anuncios.sql), la pantalla
   // funciona igual pero avisa que no se podrán guardar los anuncios.
   const historyMissing = Boolean(historyResult.error);
@@ -67,7 +71,7 @@ export default async function AnunciosPage() {
           </p>
         </div>
 
-        <AnunciosClient products={products} initialHistory={history} historyMissing={historyMissing} aiEnabled={Boolean(settings.apiKey) && settings.provider !== 'mock'} social={toSafeView(socialSettings)} />
+        <AnunciosClient products={products} initialHistory={history} historyMissing={historyMissing} aiEnabled={Boolean(settings.apiKey) && settings.provider !== 'mock'} social={toSafeView(socialSettings)} socialHealth={socialHealth} />
       </main>
     </div>
   );

@@ -61,3 +61,25 @@ export async function notifyAiError(origin: AiErrorOrigin, error: unknown): Prom
     console.error('[notify] No se pudo avisar por correo:', err);
   }
 }
+
+/**
+ * Manda un correo informativo al dueño (mismo SMTP que los avisos de error de IA). Devuelve `false`
+ * si falta la configuración de /admin/notificaciones o si el envío falla; nunca lanza.
+ */
+export async function sendOwnerEmail(subject: string, text: string): Promise<boolean> {
+  const settings = await getNotifySettings();
+  if (!settings.smtpHost || !settings.smtpPort || !settings.smtpUser || !settings.smtpPass || !settings.alertEmail) return false;
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort,
+      secure: settings.smtpPort === 465,
+      auth: { user: settings.smtpUser, pass: settings.smtpPass },
+    });
+    await transporter.sendMail({ from: settings.smtpUser, to: settings.alertEmail, subject, text });
+    return true;
+  } catch (err) {
+    console.error('[notify] No se pudo mandar el correo:', err);
+    return false;
+  }
+}

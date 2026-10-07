@@ -18,6 +18,7 @@ import {
   type AdTypeId,
 } from '@/lib/anuncios/config';
 import type { SocialSettingsView } from '@/lib/social/settings';
+import type { ConnectionHealth } from '@/lib/social/health';
 import PublishPanel from './PublishPanel';
 
 export interface PickerProduct {
@@ -95,12 +96,14 @@ export default function AnunciosClient({
   historyMissing,
   aiEnabled,
   social,
+  socialHealth,
 }: {
   products: PickerProduct[];
   initialHistory: AdRecord[];
   historyMissing: boolean;
   aiEnabled: boolean;
   social: SocialSettingsView;
+  socialHealth: ConnectionHealth | null;
 }) {
   const [type, setType] = useState<AdTypeId>('destacado');
   const [styleId, setStyleId] = useState<AdStyleId>('llamativo');
@@ -205,6 +208,25 @@ export default function AnunciosClient({
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           No se encontró la tabla del historial. Corré <code className="font-mono">supabase/schema_anuncios.sql</code> en el SQL Editor de Supabase; mientras
           tanto no se podrán guardar anuncios.
+        </div>
+      )}
+      {social.connected && socialHealth && (socialHealth.valid === false || (socialHealth.daysLeft !== null && socialHealth.daysLeft <= 30)) && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {socialHealth.valid === false ? (
+            <>La conexión con Instagram/Facebook ya no es válida: no se podrá publicar directo hasta que la vuelvas a conectar.</>
+          ) : (
+            <>
+              Reconecta Instagram/Facebook antes del{' '}
+              <strong>
+                {new Date(socialHealth.dataAccessExpiresAt!).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Mazatlan' })}
+              </strong>{' '}
+              ({socialHealth.daysLeft} día{socialHealth.daysLeft === 1 ? '' : 's'}): Meta pide volver a autorizar la app cada ~90 días.
+            </>
+          )}{' '}
+          <a href="/admin/redes" className="font-semibold underline">
+            Ir a Redes sociales
+          </a>
+          .
         </div>
       )}
       {!aiEnabled && (

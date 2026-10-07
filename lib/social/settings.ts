@@ -106,7 +106,7 @@ export async function clearConnection(): Promise<void> {
   const { error } = await supabaseAdmin
     .from('social_settings')
     .delete()
-    .in('key', ['page_id', 'page_name', 'page_token', 'ig_user_id', 'ig_username', 'app_id', 'connected_at', 'granted_permissions']);
+    .in('key', ['page_id', 'page_name', 'page_token', 'ig_user_id', 'ig_username', 'app_id', 'connected_at', 'granted_permissions', 'expiry_alert_at']);
   if (error) throw error;
   invalidateSocialSettingsCache();
 }

@@ -93,6 +93,24 @@ export async function listPagesFromUserToken(input: { appId: string; appSecret: 
   return { pages: result, granted };
 }
 
+export interface TokenInfo {
+  isValid: boolean;
+  /** 0 = el token no vence. */
+  expiresAt: number;
+  /** Fecha (segundos Unix) hasta la que Meta permite el acceso a los datos sin volver a autorizar la app (~90 días). */
+  dataAccessExpiresAt: number | null;
+}
+
+/** Pregunta a Meta si el token sigue siendo válido y cuándo vence el acceso a datos (no necesita el App Secret). */
+export async function inspectToken(token: string): Promise<TokenInfo> {
+  const res = await graph<{ data: { is_valid?: boolean; expires_at?: number; data_access_expires_at?: number } }>(
+    '/debug_token',
+    { input_token: token, access_token: token },
+    'GET',
+  );
+  return { isValid: res.data.is_valid !== false, expiresAt: res.data.expires_at ?? 0, dataAccessExpiresAt: res.data.data_access_expires_at ?? null };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Facebook (Página)
 // ---------------------------------------------------------------------------------------------

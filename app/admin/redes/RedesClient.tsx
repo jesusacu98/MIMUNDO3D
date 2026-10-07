@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2, Unplug } from 'lucide-react';
 import type { SocialSettingsView } from '@/lib/social/settings';
+import type { ConnectionHealth } from '@/lib/social/health';
 
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
@@ -17,7 +18,7 @@ interface PageOption {
   igUsername: string | null;
 }
 
-export default function RedesClient({ settings }: { settings: SocialSettingsView }) {
+export default function RedesClient({ settings, health }: { settings: SocialSettingsView; health: ConnectionHealth | null }) {
   const router = useRouter();
   const [appId, setAppId] = useState('');
   const [appSecret, setAppSecret] = useState('');
@@ -92,6 +93,24 @@ export default function RedesClient({ settings }: { settings: SocialSettingsView
                     <span className="text-amber-700">esta Página no tiene una cuenta de Instagram vinculada (sólo se podrá publicar en Facebook)</span>
                   )}
                 </div>
+                {health?.valid === false && (
+                  <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    <strong>Meta ya no acepta esta conexión</strong> (cambio de contraseña, app quitada o permisos retirados). Vuelve a conectar abajo.
+                  </div>
+                )}
+                {health?.valid !== false && health?.dataAccessExpiresAt && health.daysLeft !== null && (
+                  <div
+                    className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+                      health.daysLeft <= 14 ? 'border-red-200 bg-red-50 text-red-800' : health.daysLeft <= 30 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-zinc-200 bg-zinc-50 text-zinc-700'
+                    }`}
+                  >
+                    <strong>Reconectar antes del{' '}
+                    {new Date(health.dataAccessExpiresAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Mazatlan' })}</strong>{' '}
+                    ({health.daysLeft <= 0 ? 'ya pasó esa fecha' : `faltan ${health.daysLeft} día${health.daysLeft === 1 ? '' : 's'}`}).{' '}
+                    El token de la Página no vence, pero Meta pide volver a autorizar la app cada ~90 días; si no se reconecta, puede dejar de publicar.
+                    {health.daysLeft <= 14 && ' Te mandamos un correo de aviso (si tienes el correo configurado en Notificaciones).'}
+                  </div>
+                )}
                 {settings.missingPermissions && settings.missingPermissions.length > 0 && (
                   <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 space-y-2">
                     <p>

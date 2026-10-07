@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getSocialSettings, toSafeView } from '@/lib/social/settings';
+import { alertIfExpiring, getConnectionHealth } from '@/lib/social/health';
 import RedesClient from './RedesClient';
 
 export default async function RedesPage() {
@@ -15,7 +16,10 @@ export default async function RedesPage() {
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const settings = toSafeView(await getSocialSettings());
+  const raw = await getSocialSettings();
+  const health = await getConnectionHealth(raw);
+  await alertIfExpiring(health);
+  const settings = toSafeView(raw);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -36,7 +40,7 @@ export default async function RedesPage() {
           </p>
         </div>
 
-        <RedesClient settings={settings} />
+        <RedesClient settings={settings} health={health} />
       </main>
     </div>
   );
