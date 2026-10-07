@@ -410,3 +410,7 @@ En Instagram se sugieren pocos y relevantes (hoy el tope recomendado es 5; una s
 ### Fuera de alcance por ahora
 
 Publicar directo en Meta (ver nota de investigación en memoria), programar publicaciones, video/timelapse, antes-y-después y series semanales (necesitan fotos/video propios), editar estilos desde el admin.
+
+### Composición creativa por estilo (2026-10-06)
+
+Por pedido del dueño la foto ocupa gran parte de la lámina y cada estilo compone distinto (`singleGeom`/`singleSlide` en `lib/anuncios/templates.tsx`): **llamativo** = fondo rosa liso (sin degradados), la foto ENTERA con su proporción original en un marco blanco ladeado sobre un bloque amarillo, con sellos (`naturalPhoto: true` en el estilo → `loadProductPhotoNatural`, sin recorte ni relleno desenfocado); **profesional** = foto a sangre con panel blanco de esquinas redondas encima; **premium** = foto a lienzo completo con degradado negro y marco; **minimalista** = foto grande con bloque rosa desplazado y tarjeta blanca de texto montada; **cálido** = foto en arco con contorno; **crudo** = polaroid enorme ladeada sobre cinta de papel. La portada del carrusel usa tarjetas ladeadas y encimadas (`COVER_CARDS`). Logo, contador y sellos (`-X%`, «¡NUEVO!») flotan sobre la foto. En `loadProductPhoto` (`lib/anuncios/assets.ts`) la foto se recorta sólo si se pierde ≤10 %; si no, va completa sobre una copia desenfocada con los bordes difuminados.

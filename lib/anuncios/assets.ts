@@ -54,11 +54,27 @@ export function loadLogo(): Promise<string> {
 
 export const LOGO_RATIO = 997 / 122;
 
+/** Máscara de transparencia que difumina los bordes laterales/verticales de la foto centrada. */
+function featherMask(width: number, height: number, featherX: number, featherY: number, horizontal: boolean): Buffer {
+  const f = horizontal ? featherX : featherY;
+  const len = horizontal ? width : height;
+  const edge = Math.min(0.5, f / len);
+  const dir = horizontal ? 'x1="0" y1="0" x2="1" y2="0"' : 'x1="0" y1="0" x2="0" y2="1"';
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs><linearGradient id="g" ${dir}>` +
+      `<stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="${edge}" stop-color="#fff" stop-opacity="1"/>` +
+      `<stop offset="${1 - edge}" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>` +
+      `</linearGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/></svg>`,
+  );
+}
+
 /**
- * Descarga la foto del producto y la acomoda en width×height como JPEG SIN recortarla: la foto
- * completa va centrada (contain) sobre una copia suya desenfocada que rellena el resto. Así se ve
- * el producto entero aunque su proporción no sea la de la caja. También convierte cualquier
- * formato (hay productos en WebP, que el renderizador no lee) y baja las fotos de varios MB.
+ * Descarga la foto del producto y la acomoda en width×height como JPEG sin perder el producto:
+ * - si la proporción de la foto casi coincide con la de la caja (se perdería ≤10 %), se recorta apenas;
+ * - si no, la foto completa va centrada (contain) sobre una copia suya desenfocada que rellena el
+ *   resto, con los bordes difuminados para que no se note el corte.
+ * También convierte cualquier formato (hay productos en WebP, que el renderizador no lee) y baja
+ * las fotos de varios MB.
  */
 export async function loadProductPhoto(url: string, width: number, height: number): Promise<string> {
   const response = await fetch(url);
@@ -69,11 +85,45 @@ export async function loadProductPhoto(url: string, width: number, height: numbe
   const w = Math.round(width);
   const h = Math.round(height);
 
-  const backdrop = await sharp(input).resize(w, h, { fit: 'cover' }).blur(28).modulate({ brightness: 0.95 }).toBuffer();
-  const foreground = await sharp(input).resize(w, h, { fit: 'inside', withoutEnlargement: false }).toBuffer();
+  const meta = await sharp(input).metadata();
+  const imgRatio = (meta.width ?? 1) / (meta.height ?? 1);
+  const boxRatio = w / h;
+  const lost = 1 - Math.min(imgRatio / boxRatio, boxRatio / imgRatio);
+
+  if (lost <= 0.1) {
+    const output = await sharp(input).resize(w, h, { fit: 'cover', position: 'attention' }).jpeg({ quality: 88 }).toBuffer();
+    return `data:image/jpeg;base64,${output.toString('base64')}`;
+  }
+
+  const backdrop = await sharp(input).resize(w, h, { fit: 'cover' }).blur(34).modulate({ brightness: 0.95 }).toBuffer();
+  const fgRaw = await sharp(input).resize(w, h, { fit: 'inside' }).toBuffer();
+  const fgMeta = await sharp(fgRaw).metadata();
+  const fw = fgMeta.width ?? w;
+  const fh = fgMeta.height ?? h;
+
+  // Difumina sólo los lados donde la foto no llega al borde de la caja.
+  let foreground = sharp(fgRaw).ensureAlpha();
+  if (fw < w - 2) foreground = sharp(await foreground.composite([{ input: featherMask(fw, fh, 44, 0, true), blend: 'dest-in' }]).png().toBuffer());
+  if (fh < h - 2) foreground = sharp(await foreground.composite([{ input: featherMask(fw, fh, 0, 44, false), blend: 'dest-in' }]).png().toBuffer());
+
   const output = await sharp(backdrop)
-    .composite([{ input: foreground, gravity: 'centre' }])
+    .composite([{ input: await foreground.png().toBuffer(), gravity: 'centre' }])
     .jpeg({ quality: 88 })
     .toBuffer();
   return `data:image/jpeg;base64,${output.toString('base64')}`;
+}
+
+/**
+ * Foto entera con su proporción original, sin recortar ni rellenar: se achica (o agranda) hasta
+ * caber en maxW×maxH y se devuelven sus medidas reales para que la plantilla la dibuje igual.
+ */
+export async function loadProductPhotoNatural(url: string, maxW: number, maxH: number): Promise<{ src: string; w: number; h: number }> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`No se pudo descargar la foto del producto (${response.status}).`);
+  const { data, info } = await sharp(Buffer.from(await response.arrayBuffer()))
+    .rotate()
+    .resize(Math.round(maxW), Math.round(maxH), { fit: 'inside' })
+    .jpeg({ quality: 90 })
+    .toBuffer({ resolveWithObject: true });
+  return { src: `data:image/jpeg;base64,${data.toString('base64')}`, w: info.width, h: info.height };
 }

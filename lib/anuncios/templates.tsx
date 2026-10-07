@@ -44,52 +44,99 @@ export interface PhotoLayout {
   inner: Box;
 }
 
-function photoOuterBox(f: Frame, textH = f.textH): Box {
-  return { w: f.W - 2 * f.padX, h: f.H - f.padTop - f.padBottom - f.logoH - textH - 2 * f.gap };
+/** Geometría de la lámina de un solo producto: cada estilo compone distinto y la foto ocupa gran parte del lienzo. */
+interface SingleGeom {
+  /** Posición y medidas (px) de la imagen del producto. */
+  x: number;
+  y: number;
+  photo: Box;
+  /** Sólo polaroid: caja exterior de la tarjeta blanca. */
+  outer?: Box;
+  /** Dónde empieza el bloque de texto. */
+  textTop: number;
 }
 
-function photoLayoutFromBox(style: AdStyle, outer: Box): PhotoLayout {
-  switch (style.photo) {
-    case 'circle': {
-      const d = Math.min(outer.w, outer.h);
-      return { outer: { w: d, h: d }, inner: { w: d - 28, h: d - 28 } };
+function singleGeom(s: AdStyle, format: AdFormat): SingleGeom {
+  const f = frameFor(format);
+  const textTop = f.H - f.padBottom - f.textH;
+  const historia = format.id === 'historia';
+  switch (s.id) {
+    case 'llamativo': {
+      // Foto entera (sin recortar) en marco blanco: caja máxima donde se acomoda según su proporción.
+      const y = f.padTop + f.logoH + 34;
+      return { x: 0, y, photo: { w: f.W - 2 * f.padX - 56, h: textTop - 30 - y - 32 }, textTop };
     }
-    case 'square':
-      return { outer, inner: outer };
-    case 'polaroid': {
-      const o = { w: outer.w - 70, h: outer.h - 40 };
-      return { outer: o, inner: { w: o.w - 56, h: o.h - 56 - 96 } };
+    case 'profesional':
+      return { x: 0, y: 0, photo: { w: f.W, h: textTop + 20 }, textTop };
+    case 'premium':
+      return { x: 0, y: 0, photo: { w: f.W, h: f.H }, textTop };
+    case 'minimalista': {
+      const y = historia ? 90 : 40;
+      const w = f.W - 100;
+      return { x: (f.W - w) / 2 - 14, y, photo: { w, h: textTop + 70 - y }, textTop };
     }
-    default:
-      return { outer, inner: { w: outer.w - 28, h: outer.h - 28 } };
+    case 'calido': {
+      const y = f.padTop + f.logoH + 24;
+      const w = f.W - 200;
+      return { x: (f.W - w) / 2, y, photo: { w, h: textTop - 40 - y }, textTop };
+    }
+    default: {
+      // crudo: polaroid grande y ladeada
+      const y = f.padTop + f.logoH + 34;
+      const ow = f.W - 90;
+      const oh = textTop - 14 - y;
+      return { x: (f.W - ow) / 2, y, photo: { w: ow - 60, h: oh - 28 - 100 }, outer: { w: ow, h: oh }, textTop };
+    }
   }
 }
 
 /** Medidas de la foto en las láminas de un solo producto (destacado, oferta, novedad, carrusel). */
 export function singleLayout(style: AdStyle, format: AdFormat): PhotoLayout {
-  const f = frameFor(format);
-  return photoLayoutFromBox(style, photoOuterBox(f));
+  const g = singleGeom(style, format);
+  return { outer: g.outer ?? g.photo, inner: g.photo };
 }
 
-/** Medidas de las celdas del collage de la portada del carrusel. */
-export function coverLayout(style: AdStyle, format: AdFormat, count: number): { cells: number; layout: PhotoLayout } {
+/** Tarjetas ladeadas y encimadas del collage de la portada (posiciones como fracción del área). */
+const COVER_CARDS: Record<number, { x: number; y: number; w: number; h: number; r: number }[]> = {
+  2: [
+    { x: 0, y: 0, w: 0.72, h: 0.6, r: -4 },
+    { x: 0.28, y: 0.4, w: 0.72, h: 0.6, r: 3.5 },
+  ],
+  3: [
+    { x: 0, y: 0, w: 0.6, h: 0.54, r: -4 },
+    { x: 0.4, y: 0.14, w: 0.6, h: 0.52, r: 3 },
+    { x: 0.14, y: 0.5, w: 0.66, h: 0.5, r: -2 },
+  ],
+  4: [
+    { x: 0, y: 0, w: 0.56, h: 0.53, r: -4 },
+    { x: 0.44, y: 0.04, w: 0.56, h: 0.53, r: 3.5 },
+    { x: 0, y: 0.47, w: 0.56, h: 0.53, r: 3 },
+    { x: 0.44, y: 0.5, w: 0.56, h: 0.5, r: -3 },
+  ],
+};
+
+/** Medidas del collage de la portada: área disponible y, por tarjeta, su caja y la foto que lleva dentro. */
+export function coverLayout(style: AdStyle, format: AdFormat, count: number) {
+  void style;
   const f = frameFor(format);
-  const cells = Math.min(count, 4);
-  const cols = cells >= 4 ? 2 : cells;
-  const rows = cells >= 4 ? 2 : 1;
-  const titleH = coverTitleH(format);
-  const areaW = f.W - 2 * f.padX;
-  const areaH = f.H - f.padTop - f.padBottom - f.logoH - titleH - 2 * f.gap;
-  const gap = 20;
-  const cellW = (areaW - gap * (cols - 1)) / cols;
-  const cellH = (areaH - gap * (rows - 1)) / rows;
-  const outer = { w: Math.floor(cellW), h: Math.floor(cellH) };
-  // En el collage los marcos especiales (círculo, polaroid) estorban: se usa siempre la celda rectangular.
-  return { cells, layout: { outer, inner: { w: outer.w - 20, h: outer.h - 20 } } };
+  const cells = Math.min(Math.max(count, 2), 4);
+  const area = {
+    x: f.padX - 14,
+    y: f.padTop + f.logoH + f.gap + coverTitleH(format) - 10,
+    w: f.W - 2 * f.padX + 28,
+    h: 0,
+  };
+  area.h = f.H - f.padBottom + 10 - area.y;
+  const cards = COVER_CARDS[cells].map((c) => {
+    const w = Math.round(c.w * area.w);
+    const h = Math.round(c.h * area.h);
+    return { left: Math.round(area.x + c.x * area.w), top: Math.round(area.y + c.y * area.h), w, h, r: c.r, inner: { w: w - 26, h: h - 26 } };
+  });
+  return { cells: Math.min(count, 4), area, cards };
 }
 
 function coverTitleH(format: AdFormat): number {
-  return format.id === 'historia' ? 520 : format.id === 'cuadrado' ? 290 : 400;
+  return format.id === 'historia' ? 470 : format.id === 'cuadrado' ? 260 : 360;
 }
 
 function background(s: AdStyle): string {
@@ -193,62 +240,6 @@ function decorations(s: AdStyle, f: Frame): ReactElement[] {
   return out;
 }
 
-function photoBlock(s: AdStyle, layout: PhotoLayout, src: string, badge?: ReactElement | null, caption?: string): ReactElement {
-  const { outer, inner } = layout;
-  const shadow = '0 18px 44px rgba(0,0,0,0.22)';
-  // El recorte redondeado va en la propia <img>: Satori no recorta la imagen con `overflow: hidden` del contenedor.
-  const radius = s.photo === 'circle' ? Math.round(inner.w / 2) : s.photo === 'rounded' ? 32 : 0;
-  const img = <img src={src} width={inner.w} height={inner.h} style={{ objectFit: 'cover', borderRadius: radius }} alt="" />;
-  let body: ReactElement;
-
-  if (s.photo === 'circle') {
-    body = (
-      <div style={{ display: 'flex', width: outer.w, height: outer.h, borderRadius: 999, background: s.card, padding: 14, boxShadow: shadow }}>
-        {img}
-      </div>
-    );
-  } else if (s.photo === 'square') {
-    body = <div style={{ display: 'flex', width: outer.w, height: outer.h, background: s.card }}>{img}</div>;
-  } else if (s.photo === 'polaroid') {
-    body = (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: outer.w,
-          height: outer.h,
-          background: s.card,
-          padding: '28px 28px 0 28px',
-          boxShadow: shadow,
-          marginTop: 30,
-          transform: 'rotate(-2.5deg)',
-        }}
-      >
-        <div style={{ display: 'flex', width: inner.w, height: inner.h }}>{img}</div>
-        <div style={{ display: 'flex', height: 96, alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: s.muted }}>
-          {caption ? clip(caption, 34) : 'hecho en 3D'}
-        </div>
-        <div
-          style={{ position: 'absolute', top: -22, left: outer.w / 2 - 90, width: 180, height: 46, background: 'rgba(243,76,145,0.55)', transform: 'rotate(3deg)' }}
-        />
-      </div>
-    );
-  } else {
-    body = (
-      <div style={{ display: 'flex', width: outer.w, height: outer.h, background: s.card, padding: 14, borderRadius: 44, boxShadow: shadow }}>
-        {img}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', position: 'relative', width: outer.w, height: outer.h }}>
-      {body}
-      {badge}
-    </div>
-  );
-}
-
 function pill(s: AdStyle, text: string, size: number): ReactElement {
   return (
     <div
@@ -283,6 +274,8 @@ export interface SingleSlideInput {
   product: AdProduct;
   options: AdOptions;
   photoSrc: string;
+  /** Medidas reales de la foto cuando el estilo la muestra entera (`naturalPhoto`). */
+  photoDims?: Box;
   logo: string;
   /** «2/6» en las láminas de un carrusel. */
   counter?: string;
@@ -297,14 +290,16 @@ function shortName(name: string): string {
 }
 
 export function singleSlide(input: SingleSlideInput): ReactElement {
-  const { style: s, format, type, product, options, photoSrc, logo, counter, imageText } = input;
+  const { style: s, format, type, product, options, photoSrc, photoDims, logo, counter, imageText } = input;
   const f = frameFor(format);
-  const layout = singleLayout(s, format);
+  const g = singleGeom(s, format);
   const center = s.align === 'center';
   const pct = Math.min(90, Math.max(1, Math.round(options.discountPercent ?? 15)));
   const name = shortName(product.name);
   const hSize = headingSizeFor(f.headingSize, name, s);
   const small = format.id === 'cuadrado';
+  const historia = format.id === 'historia';
+  const { x, y, photo } = g;
 
   const kicker =
     type === 'oferta'
@@ -313,15 +308,61 @@ export function singleSlide(input: SingleSlideInput): ReactElement {
         ? 'NUEVO EN EL CATÁLOGO'
         : product.category.toUpperCase();
 
+  // ---- Piezas comunes -------------------------------------------------------------------------
+  // Logo y contador flotan sobre la foto (chips blancos para que se lean sobre cualquier imagen).
+  const overPhoto = s.id === 'llamativo' || s.id === 'profesional' || s.id === 'premium' || s.id === 'minimalista';
+  const logoW = Math.round(f.logoH * LOGO_RATIO * (overPhoto ? 0.82 : 1));
+  const logoHt = Math.round(f.logoH * (overPhoto ? 0.82 : 1));
+  const header = (
+    <div
+      style={{
+        position: 'absolute',
+        top: f.padTop,
+        left: f.padX,
+        width: f.W - 2 * f.padX,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+    >
+      {overPhoto ? (
+        <div style={{ display: 'flex', background: '#ffffff', borderRadius: 999, padding: '12px 26px', boxShadow: '0 8px 22px rgba(0,0,0,0.25)' }}>
+          <img src={logo} width={logoW} height={logoHt} alt="" />
+        </div>
+      ) : (
+        <div style={{ display: 'flex' }}>
+          <img src={logo} width={logoW} height={logoHt} alt="" />
+        </div>
+      )}
+      {counter ? (
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 26,
+            fontWeight: 700,
+            color: overPhoto ? '#18181b' : s.muted,
+            background: overPhoto ? 'rgba(255,255,255,0.92)' : 'transparent',
+            border: overPhoto ? 'none' : `2px solid ${s.muted}`,
+            borderRadius: 999,
+            padding: '8px 22px',
+          }}
+        >
+          {counter}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const badgeTop = f.padTop + f.logoH + (historia ? 50 : 34);
   let badge: ReactElement | null = null;
   if (type === 'oferta') {
-    const d = small ? 170 : 210;
+    const d = small ? 190 : historia ? 270 : 240;
     badge = (
       <div
         style={{
           position: 'absolute',
-          top: -26,
-          right: -14,
+          top: badgeTop,
+          right: 40,
           width: d,
           height: d,
           borderRadius: 999,
@@ -330,11 +371,12 @@ export function singleSlide(input: SingleSlideInput): ReactElement {
           alignItems: 'center',
           justifyContent: 'center',
           display: 'flex',
+          border: '6px solid #ffffff',
           fontFamily: s.heading === 'DM Serif Display' ? 'Poppins' : s.heading,
           fontWeight: s.heading === 'Bangers' ? 400 : 800,
           fontSize: Math.round(d * 0.34),
           transform: 'rotate(10deg)',
-          boxShadow: '0 10px 26px rgba(0,0,0,0.28)',
+          boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
         }}
       >
         {`-${pct}%`}
@@ -345,17 +387,18 @@ export function singleSlide(input: SingleSlideInput): ReactElement {
       <div
         style={{
           position: 'absolute',
-          top: -22,
-          left: -10,
+          top: badgeTop,
+          left: 36,
           display: 'flex',
           background: s.accent,
           color: s.onAccent,
           fontWeight: 800,
-          fontSize: small ? 34 : 44,
-          padding: '10px 34px',
+          fontSize: small ? 38 : historia ? 56 : 48,
+          padding: '12px 40px',
           borderRadius: 999,
-          transform: 'rotate(-6deg)',
-          boxShadow: '0 10px 26px rgba(0,0,0,0.28)',
+          border: '5px solid #ffffff',
+          transform: 'rotate(-7deg)',
+          boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
         }}
       >
         ¡NUEVO!
@@ -363,61 +406,231 @@ export function singleSlide(input: SingleSlideInput): ReactElement {
     );
   }
 
-  const ctaRow = (
-    <div style={{ display: 'flex', justifyContent: center ? 'center' : 'flex-start' }}>{pill(s, `Catálogo en ${BRAND.siteDisplay}`, small ? 30 : 38)}</div>
-  );
-
+  const tw = s.id === 'minimalista' ? f.W - 120 - 80 : f.W - 2 * f.padX;
   const descriptive = imageText?.trim() ? (
     <div
       style={{
         display: 'flex',
-        fontSize: fitFontSize(imageText ?? '', f.W - 2 * f.padX, small ? 120 : format.id === 'historia' ? 210 : 170, small ? 34 : 36),
+        fontSize: fitFontSize(imageText ?? '', tw, small ? 110 : historia ? 200 : 160, small ? 32 : 36),
         fontWeight: 500,
         lineHeight: 1.25,
         color: s.muted,
         textAlign: s.align,
-        maxWidth: f.W - 2 * f.padX,
+        maxWidth: tw,
       }}
     >
       {imageText.replace(/\s+/g, ' ').trim()}
     </div>
   ) : null;
 
-  return (
+  const textStack = (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        width: f.W,
-        height: f.H,
-        background: background(s),
-        fontFamily: 'Poppins',
-        padding: `${f.padTop}px ${f.padX}px ${f.padBottom}px ${f.padX}px`,
-        position: 'relative',
+        alignItems: center ? 'center' : 'flex-start',
+        justifyContent: 'center',
+        height: f.textH,
+        gap: small ? 8 : 14,
       }}
     >
-      {decorations(s, f)}
-      {headerRow(s, f, logo, counter)}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: f.gap }}>
-        {photoBlock(s, layout, photoSrc, badge, product.category)}
+      <div style={{ display: 'flex', fontSize: small ? 24 : 30, fontWeight: 800, letterSpacing: 3, color: s.accent }}>{kicker}</div>
+      <div style={{ ...headingStyle(s, hSize), display: 'flex', maxWidth: tw }}>{name}</div>
+      {descriptive}
+      <div style={{ display: 'flex', justifyContent: center ? 'center' : 'flex-start' }}>{pill(s, `Catálogo en ${BRAND.siteDisplay}`, small ? 30 : 38)}</div>
+      {small ? null : contactLine(s, 28)}
+    </div>
+  );
+
+  const textBox = (
+    <div style={{ position: 'absolute', left: f.padX, top: g.textTop, width: f.W - 2 * f.padX, height: f.textH, display: 'flex' }}>{textStack}</div>
+  );
+
+  const img = (w: number, h: number, extra: Record<string, number | string> = {}) => (
+    <img src={photoSrc} width={w} height={h} style={{ objectFit: 'cover', ...extra }} alt="" />
+  );
+
+  const rootStyle = {
+    display: 'flex',
+    width: f.W,
+    height: f.H,
+    background: background(s),
+    fontFamily: 'Poppins',
+    position: 'relative' as const,
+  };
+
+  // ---- Composición por estilo -----------------------------------------------------------------
+  if (s.id === 'llamativo') {
+    // Sin degradados: fondo rosa liso, la foto ENTERA en marco blanco ladeado sobre un bloque amarillo.
+    const dims = photoDims ?? photo;
+    const frameW = dims.w + 32;
+    const frameH = dims.h + 32;
+    const left = (f.W - frameW) / 2;
+    const top = y + (photo.h + 32 - frameH) / 2;
+    return (
+      <div style={rootStyle}>
+        {decorations(s, f)}
+        <div style={{ position: 'absolute', left: left + 30, top: top + 30, width: frameW, height: frameH, background: s.accent, transform: 'rotate(4deg)' }} />
+        <div
+          style={{
+            position: 'absolute',
+            left,
+            top,
+            width: frameW,
+            height: frameH,
+            background: '#ffffff',
+            padding: 16,
+            display: 'flex',
+            boxShadow: '0 20px 44px rgba(0,0,0,0.3)',
+            transform: 'rotate(-2deg)',
+          }}
+        >
+          <img src={photoSrc} width={dims.w} height={dims.h} alt="" />
+        </div>
+        {header}
+        {badge}
+        {textBox}
       </div>
+    );
+  }
+
+  if (s.id === 'profesional') {
+    // Foto a sangre arriba y un panel blanco con esquinas redondas que la monta por debajo.
+    return (
+      <div style={rootStyle}>
+        <div style={{ position: 'absolute', left: x, top: y, display: 'flex' }}>{img(photo.w, photo.h)}</div>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: f.W, height: 16, background: s.accent }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: g.textTop - 48,
+            width: f.W,
+            height: f.H - (g.textTop - 48),
+            background: '#ffffff',
+            borderTopLeftRadius: 60,
+            borderTopRightRadius: 60,
+            boxShadow: '0 -16px 44px rgba(15,23,42,0.22)',
+          }}
+        />
+        <div style={{ position: 'absolute', left: f.padX, top: g.textTop - 48 - 6, width: 150, height: 12, background: s.accent, borderRadius: 6 }} />
+        {header}
+        {badge}
+        {textBox}
+      </div>
+    );
+  }
+
+  if (s.id === 'premium') {
+    // Foto a lienzo completo, degradado negro desde abajo y marco fino.
+    return (
+      <div style={rootStyle}>
+        <div style={{ position: 'absolute', left: 0, top: 0, display: 'flex' }}>{img(photo.w, photo.h)}</div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: f.H * 0.34,
+            width: f.W,
+            height: f.H * 0.66,
+            backgroundImage: 'linear-gradient(to top, rgba(12,10,15,0.97) 0%, rgba(12,10,15,0.9) 42%, rgba(12,10,15,0) 100%)',
+          }}
+        />
+        <div style={{ position: 'absolute', left: 0, top: 0, width: f.W, height: 280, backgroundImage: 'linear-gradient(to bottom, rgba(12,10,15,0.65), rgba(12,10,15,0))' }} />
+        <div style={{ position: 'absolute', top: 26, left: 26, right: 26, bottom: 26, border: `2px solid ${s.accent}`, borderRadius: 8, opacity: 0.75 }} />
+        {header}
+        {badge}
+        {textBox}
+      </div>
+    );
+  }
+
+  if (s.id === 'minimalista') {
+    // Foto grande con un bloque rosa desplazado detrás y una tarjeta blanca de texto que la monta.
+    return (
+      <div style={rootStyle}>
+        <div style={{ position: 'absolute', left: x + 30, top: y + 30, width: photo.w, height: photo.h, background: s.accent }} />
+        <div style={{ position: 'absolute', left: x, top: y, display: 'flex' }}>{img(photo.w, photo.h)}</div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 48,
+            top: g.textTop,
+            width: f.W - 120,
+            height: f.textH + 30,
+            background: '#ffffff',
+            padding: '0 40px',
+            display: 'flex',
+            boxShadow: '0 14px 40px rgba(0,0,0,0.14)',
+          }}
+        >
+          {textStack}
+        </div>
+        {header}
+        {badge}
+      </div>
+    );
+  }
+
+  if (s.id === 'calido') {
+    // Foto en arco con un contorno que lo rodea, círculos suaves de fondo y texto centrado.
+    const r = photo.w / 2;
+    return (
+      <div style={rootStyle}>
+        {decorations(s, f)}
+        <div
+          style={{
+            position: 'absolute',
+            left: x - 22,
+            top: y - 22,
+            width: photo.w + 44,
+            height: photo.h + 44,
+            border: '6px solid rgba(243,76,145,0.4)',
+            borderTopLeftRadius: r + 22,
+            borderTopRightRadius: r + 22,
+            borderBottomLeftRadius: 70,
+            borderBottomRightRadius: 70,
+          }}
+        />
+        <div style={{ position: 'absolute', left: x, top: y, display: 'flex' }}>
+          {img(photo.w, photo.h, { borderTopLeftRadius: r, borderTopRightRadius: r, borderBottomLeftRadius: 50, borderBottomRightRadius: 50 })}
+        </div>
+        {header}
+        {badge}
+        {textBox}
+      </div>
+    );
+  }
+
+  // crudo: polaroid enorme ladeada sobre una cinta de papel rosa
+  const outer = g.outer ?? { w: photo.w + 60, h: photo.h + 128 };
+  return (
+    <div style={rootStyle}>
+      <div style={{ position: 'absolute', left: -60, top: y + outer.h * 0.38, width: f.W + 120, height: outer.h * 0.5, background: '#f7c6dc', transform: 'rotate(-5deg)' }} />
       <div
         style={{
+          position: 'absolute',
+          left: x,
+          top: y,
+          width: outer.w,
+          height: outer.h,
+          background: s.card,
+          padding: '30px 30px 0 30px',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: center ? 'center' : 'flex-start',
-          justifyContent: 'center',
-          marginTop: f.gap,
-          height: f.textH,
-          gap: small ? 8 : 14,
+          boxShadow: '0 24px 54px rgba(0,0,0,0.3)',
+          transform: 'rotate(-2.5deg)',
         }}
       >
-        <div style={{ display: 'flex', fontSize: small ? 24 : 30, fontWeight: 800, letterSpacing: 3, color: s.accent }}>{kicker}</div>
-        <div style={{ ...headingStyle(s, hSize), display: 'flex', maxWidth: f.W - 2 * f.padX }}>{name}</div>
-        {descriptive}
-        {ctaRow}
-        {small ? null : contactLine(s, 28)}
+        <div style={{ display: 'flex', width: photo.w, height: photo.h }}>{img(photo.w, photo.h)}</div>
+        <div style={{ display: 'flex', height: 98, alignItems: 'center', justifyContent: 'center', fontFamily: 'Bangers', fontSize: 46, letterSpacing: 2, color: s.muted }}>
+          {clip(product.category || 'hecho en 3D', 30).toUpperCase()}
+        </div>
+        <div style={{ position: 'absolute', top: -26, left: outer.w / 2 - 100, width: 200, height: 54, background: 'rgba(243,76,145,0.6)', transform: 'rotate(3deg)' }} />
       </div>
+      {header}
+      {badge}
+      {textBox}
     </div>
   );
 }
@@ -428,21 +641,21 @@ export interface CoverSlideInput {
   title: string;
   total: number;
   photos: string[];
+  /** Medidas reales de cada foto cuando el estilo la muestra entera (`naturalPhoto`). */
+  photoDims?: Box[];
   logo: string;
   /** Texto descriptivo bajo el título (lo que el cliente lee en la imagen). */
   imageText?: string;
 }
 
 export function coverSlide(input: CoverSlideInput): ReactElement {
-  const { style: s, format, title, total, photos, logo, imageText } = input;
+  const { style: s, format, title, total, photos, photoDims, logo, imageText } = input;
   const f = frameFor(format);
-  const { layout } = coverLayout(s, format, photos.length);
-  const cols = photos.length >= 4 ? 2 : photos.length;
+  const { cards } = coverLayout(s, format, photos.length);
   const center = s.align === 'center';
   const titleH = coverTitleH(format);
   const clean = clip(title, 70);
   const hSize = headingSizeFor(f.headingSize * 1.12, clean, s);
-  const cardShape = { borderRadius: s.photo === 'square' ? 0 : 30 };
   // Minimalista: portada de aire «editorial» (título grande con la última palabra en rosa, filete,
   // subtítulo con barra y fotos numeradas) para que no se sienta vacía sin dejar de ser sobria.
   const editorial = s.id === 'minimalista';
@@ -455,8 +668,6 @@ export function coverSlide(input: CoverSlideInput): ReactElement {
   const editorialSize = Math.max(58, Math.min(112, Math.max(oneLine, twoLines)));
   const subtitle = imageText?.replace(/\s+/g, ' ').trim() ?? '';
 
-  const rows: string[][] = [];
-  for (let i = 0; i < photos.length; i += cols) rows.push(photos.slice(i, i + cols));
 
   return (
     <div
@@ -531,48 +742,51 @@ export function coverSlide(input: CoverSlideInput): ReactElement {
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: f.gap }}>
-        {rows.map((row, r) => (
-          <div key={r} style={{ display: 'flex', gap: 20 }}>
-            {row.map((src, c) => (
-              <div
-                key={c}
-                style={{
-                  display: 'flex',
-                  width: layout.outer.w,
-                  height: layout.outer.h,
-                  background: s.card,
-                  padding: 10,
-                  ...(editorial ? {} : { boxShadow: '0 12px 30px rgba(0,0,0,0.2)' }),
-                  position: 'relative',
-                  ...cardShape,
-                }}
-              >
-                <img src={src} width={layout.inner.w} height={layout.inner.h} style={{ objectFit: 'cover', borderRadius: cardShape.borderRadius ? 22 : 0 }} alt="" />
-                {editorial ? (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: 22,
-                      bottom: 22,
-                      display: 'flex',
-                      background: s.accent,
-                      color: s.onAccent,
-                      fontSize: 24,
-                      fontWeight: 800,
-                      letterSpacing: 1,
-                      padding: '4px 16px',
-                      borderRadius: 999,
-                    }}
-                  >
-                    {String(r * cols + c + 1).padStart(2, '0')}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+      {cards.slice(0, photos.length).map((card, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: card.left,
+            top: card.top,
+            width: card.w,
+            height: card.h,
+            display: 'flex',
+            background: s.card,
+            padding: 13,
+            borderRadius: s.photo === 'square' ? 4 : 30,
+            boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
+            transform: `rotate(${card.r}deg)`,
+          }}
+        >
+          {photoDims ? (
+            <div style={{ display: 'flex', width: card.inner.w, height: card.inner.h, alignItems: 'center', justifyContent: 'center' }}>
+              <img src={photos[i]} width={photoDims[i].w} height={photoDims[i].h} alt="" />
+            </div>
+          ) : (
+            <img src={photos[i]} width={card.inner.w} height={card.inner.h} style={{ objectFit: 'cover', borderRadius: s.photo === 'square' ? 2 : 20 }} alt="" />
+          )}
+          {editorial ? (
+            <div
+              style={{
+                position: 'absolute',
+                left: 26,
+                bottom: 26,
+                display: 'flex',
+                background: s.accent,
+                color: s.onAccent,
+                fontSize: 26,
+                fontWeight: 800,
+                letterSpacing: 1,
+                padding: '4px 18px',
+                borderRadius: 999,
+              }}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </div>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }

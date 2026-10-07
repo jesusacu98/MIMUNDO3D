@@ -42,6 +42,8 @@ export interface AdStyle {
   photo: 'rounded' | 'circle' | 'square' | 'polaroid';
   /** El logo rosa no se ve sobre fondos oscuros/rosas: va dentro de una pastilla blanca. */
   logoPill: boolean;
+  /** La foto se muestra entera y con su proporción original (sin recortar ni rellenar con desenfoque). */
+  naturalPhoto?: boolean;
   uppercaseHeading: boolean;
   align: 'left' | 'center';
 }
@@ -50,10 +52,10 @@ export const AD_STYLES: AdStyle[] = [
   {
     id: 'llamativo',
     label: 'Llamativo',
-    description: 'Fondo rosa de marca, colores fuertes y letras grandes. Para ofertas y novedades que deben notarse.',
+    description: 'Fondo rosa liso (sin degradados), colores fuertes, letras grandes y la foto completa en marco blanco. Para ofertas y novedades que deben notarse.',
     tone: 'enérgico, divertido y emocionado; frases cortas, signos de exclamación y emojis (3 a 5)',
     bg: BRAND.pink,
-    bg2: '#ff8a5c',
+    bg2: BRAND.pink,
     text: '#ffffff',
     muted: '#ffe4ee',
     accent: '#ffe14d',
@@ -63,6 +65,7 @@ export const AD_STYLES: AdStyle[] = [
     headingWeight: 400,
     photo: 'rounded',
     logoPill: true,
+    naturalPhoto: true,
     uppercaseHeading: true,
     align: 'left',
   },

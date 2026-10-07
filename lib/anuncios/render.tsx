@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import type { ReactElement } from 'react';
 import type { AdFormat, AdOptions, AdProduct, AdStyle, AdTypeId } from './config';
-import { loadFonts, loadLogo, loadProductPhoto } from './assets';
+import { loadFonts, loadLogo, loadProductPhoto, loadProductPhotoNatural } from './assets';
 import { closingSlide, coverLayout, coverSlide, singleLayout, singleSlide } from './templates';
 
 export interface RenderAdInput {
@@ -31,25 +31,36 @@ export async function renderAd({ style, format, type, products, options, imageTe
   if (type !== 'coleccion') {
     const product = products[0];
     const { inner } = singleLayout(style, format);
+    if (style.naturalPhoto) {
+      const photo = await loadProductPhotoNatural(product.imageUrl, inner.w, inner.h);
+      return [await toPng(singleSlide({ style, format, type, product, options, photoSrc: photo.src, photoDims: { w: photo.w, h: photo.h }, logo, imageText }), format)];
+    }
     const photoSrc = await loadProductPhoto(product.imageUrl, inner.w, inner.h);
     return [await toPng(singleSlide({ style, format, type, product, options, photoSrc, logo, imageText }), format)];
   }
 
   const total = products.length;
   const slideCount = total + 2;
-  const { inner: coverInner, cells } = (({ cells, layout }) => ({ cells, inner: layout.inner }))(coverLayout(style, format, total));
+  const { cells, cards } = coverLayout(style, format, total);
   const { inner } = singleLayout(style, format);
 
-  const [coverPhotos, productPhotos] = await Promise.all([
-    Promise.all(products.slice(0, cells).map((p) => loadProductPhoto(p.imageUrl, coverInner.w, coverInner.h))),
-    Promise.all(products.map((p) => loadProductPhoto(p.imageUrl, inner.w, inner.h))),
+  // Estilos con foto «natural»: cada foto va entera y con sus medidas reales (sin recorte ni relleno).
+  const load = async (url: string, box: { w: number; h: number }) => {
+    if (style.naturalPhoto) return loadProductPhotoNatural(url, box.w, box.h);
+    return { src: await loadProductPhoto(url, box.w, box.h), w: box.w, h: box.h };
+  };
+  const [coverLoaded, productLoaded] = await Promise.all([
+    Promise.all(products.slice(0, cells).map((p, i) => load(p.imageUrl, cards[i].inner))),
+    Promise.all(products.map((p) => load(p.imageUrl, inner))),
   ]);
+  const coverPhotos = coverLoaded.map((p) => p.src);
+  const coverDims = coverLoaded.map((p) => ({ w: p.w, h: p.h }));
 
   const title = options.title?.trim() || 'Nuestros favoritos';
   const slides: ReactElement[] = [
-    coverSlide({ style, format, title, total, photos: coverPhotos, logo, imageText }),
+    coverSlide({ style, format, title, total, photos: coverPhotos, photoDims: style.naturalPhoto ? coverDims : undefined, logo, imageText }),
     ...products.map((product, i) =>
-      singleSlide({ style, format, type: 'carrusel', product, options, photoSrc: productPhotos[i], logo, counter: `${i + 2}/${slideCount}` }),
+      singleSlide({ style, format, type: 'carrusel', product, options, photoSrc: productLoaded[i].src, photoDims: style.naturalPhoto ? { w: productLoaded[i].w, h: productLoaded[i].h } : undefined, logo, counter: `${i + 2}/${slideCount}` }),
     ),
     closingSlide({ style, format, logo, counter: `${slideCount}/${slideCount}` }),
   ];
