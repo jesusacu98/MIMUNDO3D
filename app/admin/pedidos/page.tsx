@@ -121,7 +121,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           {statusCounts.map(({ status: s, count: c }) => (
             <div key={s} className="bg-white border border-zinc-200/60 rounded-2xl p-4">
               <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1 truncate">{s}</p>
