@@ -27,7 +27,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
   const [{ data: order }, { data: orderItemsData }, { data: productsData }] = await Promise.all([
     supabaseAdmin
       .from('orders')
-      .select('id, order_date, client_name, payment_status, payment_method, advance_amount, whatsapp_link, order_status')
+      .select('id, order_date, delivery_date, client_name, payment_status, payment_method, advance_amount, whatsapp_link, order_status')
       .eq('id', id)
       .maybeSingle(),
     supabaseAdmin
@@ -67,6 +67,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
           submitLabel="Guardar cambios"
           initialValues={{
             order_date: order.order_date ?? '',
+            delivery_date: order.delivery_date ?? '',
             client_name: order.client_name,
             payment_status: order.payment_status ?? '',
             payment_method: order.payment_method ?? '',

@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import OrderForm from '../OrderForm';
 import { createOrder } from '../actions';
+import { suggestDeliveryDate } from '@/lib/deliveryDate';
 
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
@@ -54,6 +55,7 @@ export default async function NuevoPedidoPage({ searchParams }: PageProps) {
           submitLabel="Crear pedido"
           initialValues={{
             order_date: todayInMazatlan(),
+            delivery_date: suggestDeliveryDate(todayInMazatlan()),
             client_name: '',
             payment_status: '',
             payment_method: '',

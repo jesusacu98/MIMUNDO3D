@@ -30,6 +30,7 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
 
   const status = searchParams.get('status') ?? '';
   const payment = searchParams.get('payment') ?? '';
+  const delivery = searchParams.get('delivery') ?? '';
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
     navigate(params);
   }
 
-  const hasActiveFilters = Boolean(query || status || payment);
+  const hasActiveFilters = Boolean(query || status || payment || delivery);
 
   return (
     <div>
@@ -91,6 +92,14 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
             </option>
           ))}
         </select>
+        <input
+          type="date"
+          value={delivery}
+          onChange={(e) => updateParams({ delivery: e.target.value })}
+          aria-label="Fecha de entrega"
+          title="Filtrar por fecha de entrega"
+          className={inputClass}
+        />
         <select value={payment} onChange={(e) => updateParams({ payment: e.target.value })} className={inputClass}>
           <option value="">Todos los pagos</option>
           {PAYMENT_STATUSES.map((s) => (

@@ -6,6 +6,7 @@ import DeleteOrderButton from './DeleteOrderButton';
 export interface OrderRow {
   id: string;
   order_date: string | null;
+  delivery_date: string | null;
   client_name: string;
   payment_status: string | null;
   payment_method: string | null;
@@ -46,7 +47,8 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
                 {order.client_name} · {order.productSummary}
               </p>
               <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                {formatDate(order.order_date)} · {currency.format(order.salePrice)} · Ganancia {currency.format(order.profit)}
+                {formatDate(order.order_date)}
+                {order.delivery_date && ` · Entrega ${formatDate(order.delivery_date)}`} · {currency.format(order.salePrice)} · Ganancia {currency.format(order.profit)}
                 {order.advance_amount != null && ` · Anticipo ${currency.format(order.advance_amount)}`}
               </p>
             </div>
@@ -67,10 +69,11 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
 
       {/* Desktop/tablet: tabla completa */}
       <div className="hidden sm:block bg-white border border-zinc-200/60 rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm min-w-[880px]">
+        <table className="w-full text-sm min-w-[960px]">
           <thead className="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-5 py-3 font-semibold">Fecha</th>
+              <th className="text-left px-5 py-3 font-semibold">Entrega</th>
               <th className="text-left px-5 py-3 font-semibold">Cliente</th>
               <th className="text-left px-5 py-3 font-semibold">Productos</th>
               <th className="text-left px-5 py-3 font-semibold">Venta</th>
@@ -87,6 +90,7 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
             {orders.map((order) => (
               <tr key={order.id} className="hover:bg-zinc-50/60">
                 <td className="px-5 py-3 text-zinc-600 whitespace-nowrap">{formatDate(order.order_date)}</td>
+                <td className="px-5 py-3 text-zinc-600 whitespace-nowrap">{formatDate(order.delivery_date)}</td>
                 <td className="px-5 py-3 font-medium text-zinc-900">{order.client_name}</td>
                 <td className="px-5 py-3 text-zinc-600">{order.productSummary}</td>
                 <td className="px-5 py-3 text-zinc-600 whitespace-nowrap">{currency.format(order.salePrice)}</td>
@@ -123,7 +127,7 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-5 py-10 text-center text-zinc-500">
+                <td colSpan={12} className="px-5 py-10 text-center text-zinc-500">
                   {emptyMessage}
                 </td>
               </tr>

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import SubmitButton from '@/components/SubmitButton';
 import { ORDER_STATUSES, PAYMENT_STATUSES, PAYMENT_METHODS } from '@/lib/orderStatuses';
-import ProductPicker, { type PickerProduct } from './ProductPicker';
+import { suggestDeliveryDate } from '@/lib/deliveryDate';
+import ProductPicker,{ type PickerProduct } from './ProductPicker';
 
 export interface OrderItemValue {
   product_id: string;
@@ -17,6 +18,7 @@ export interface OrderItemValue {
 
 interface OrderFormValues {
   order_date: string;
+  delivery_date: string;
   client_name: string;
   payment_status: string;
   payment_method: string;
@@ -70,6 +72,12 @@ export default function OrderForm({ action, products, initialValues, error, subm
     const source = initialValues?.items?.length ? initialValues.items : [undefined];
     return source.map((v) => toItemState(v, products));
   });
+  const [orderDate, setOrderDate] = useState(initialValues?.order_date ?? '');
+  const [deliveryDate, setDeliveryDate] = useState(initialValues?.delivery_date ?? '');
+  // Mientras no se cambie a mano, la entrega se recalcula al cambiar la fecha del pedido.
+  const [deliveryIsManual, setDeliveryIsManual] = useState(
+    () => !!initialValues?.delivery_date && initialValues.delivery_date !== suggestDeliveryDate(initialValues.order_date)
+  );
   const [paymentStatus, setPaymentStatus] = useState(initialValues?.payment_status ?? '');
   const [advanceAmount, setAdvanceAmount] = useState(initialValues?.advance_amount ?? '');
   const initialPaymentMethod = initialValues?.payment_method ?? '';
@@ -134,7 +142,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
     <form action={action} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 max-w-2xl space-y-6">
       {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label htmlFor="client_name" className={labelClass}>
             Cliente <span className="text-primary">*</span>
@@ -152,7 +160,48 @@ export default function OrderForm({ action, products, initialValues, error, subm
           <label htmlFor="order_date" className={labelClass}>
             Fecha
           </label>
-          <input id="order_date" name="order_date" type="date" defaultValue={initialValues?.order_date} className={inputClass} />
+          <input
+            id="order_date"
+            name="order_date"
+            type="date"
+            value={orderDate}
+            onChange={(e) => {
+              setOrderDate(e.target.value);
+              if (!deliveryIsManual) setDeliveryDate(suggestDeliveryDate(e.target.value));
+            }}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="delivery_date" className={labelClass}>
+            Fecha de entrega
+          </label>
+          <input
+            id="delivery_date"
+            name="delivery_date"
+            type="date"
+            value={deliveryDate}
+            onChange={(e) => {
+              setDeliveryDate(e.target.value);
+              setDeliveryIsManual(true);
+            }}
+            className={inputClass}
+          />
+          <p className="mt-1.5 text-xs text-zinc-500">
+            Se calcula sola: una semana después del pedido, en el primer sábado o domingo. La puedes cambiar si hace falta.
+            {deliveryIsManual && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeliveryDate(suggestDeliveryDate(orderDate));
+                  setDeliveryIsManual(false);
+                }}
+                className="ml-1 font-semibold text-primary hover:text-primary-dark cursor-pointer"
+              >
+                Volver a calcular
+              </button>
+            )}
+          </p>
         </div>
       </div>
 

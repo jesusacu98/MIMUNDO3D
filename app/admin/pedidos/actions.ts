@@ -14,7 +14,8 @@ type ParsedItem = Omit<OrderItemInsert, 'order_id'>;
 function parseOrderForm(formData: FormData): { values: OrderInsert } | { error: string } {
   const clientName = String(formData.get('client_name') || '').trim();
   const orderDateRaw = String(formData.get('order_date') || '').trim();
-  const paymentStatusRaw = String(formData.get('payment_status') || '').trim();
+  const deliveryDateRaw = String(formData.get('delivery_date') || '').trim();
+  const paymentStatusRaw =String(formData.get('payment_status') || '').trim();
   const paymentMethod = String(formData.get('payment_method') || '').trim();
   const advanceAmountRaw = String(formData.get('advance_amount') || '').trim();
   const whatsappLink = String(formData.get('whatsapp_link') || '').trim();
@@ -38,6 +39,7 @@ function parseOrderForm(formData: FormData): { values: OrderInsert } | { error: 
   return {
     values: {
       order_date: orderDateRaw || null,
+      delivery_date: deliveryDateRaw || null,
       client_name: clientName,
       payment_status: paymentStatusRaw || null,
       payment_method: paymentMethod || null,

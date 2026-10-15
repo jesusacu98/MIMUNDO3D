@@ -8,7 +8,7 @@ import PedidosBrowser from './PedidosBrowser';
 import { deleteOrder } from './actions';
 
 interface PageProps {
-  searchParams: Promise<{ error?: string; page?: string; q?: string; status?: string; payment?: string }>;
+  searchParams: Promise<{ error?: string; page?: string; q?: string; status?: string; payment?: string; delivery?: string }>;
 }
 
 const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -21,7 +21,7 @@ function collectedForOrder(order: { payment_status: string | null; salePrice: nu
 }
 
 export default async function AdminPedidosPage({ searchParams }: PageProps) {
-  const { error, page: pageParam, q: qParam, status: statusParam, payment: paymentParam } = await searchParams;
+  const { error, page: pageParam, q: qParam, status: statusParam, payment: paymentParam, delivery: deliveryParam } = await searchParams;
 
   const supabaseAuth = await createServerSupabaseClient();
   const {
@@ -36,6 +36,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
   const q = (qParam ?? '').trim();
   const status = statusParam ?? '';
   const payment = paymentParam ?? '';
+  const delivery = /^\d{4}-\d{2}-\d{2}$/.test(deliveryParam ?? '') ? (deliveryParam as string) : '';
 
   // Totales globales (KPIs de arriba): siempre sobre TODOS los pedidos,
   // independientemente de los filtros/página que se estén viendo abajo.
@@ -64,7 +65,8 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
   // Filas de la tabla: filtradas y paginadas en el servidor.
   let pageQuery = supabaseAdmin
     .from('orders')
-    .select('id, order_date, client_name, payment_status, payment_method, advance_amount, order_status', { count: 'exact' });
+    .select('id, order_date, delivery_date, client_name, payment_status, payment_method, advance_amount, order_status', { count: 'exact' });
+  if (delivery) pageQuery = pageQuery.eq('delivery_date', delivery);
   if (status) pageQuery = pageQuery.eq('order_status', status);
   if (payment) pageQuery = pageQuery.eq('payment_status', payment);
   if (q) pageQuery = pageQuery.ilike('client_name', `%${q}%`);
@@ -99,7 +101,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const hasFilters = Boolean(q || status || payment);
+  const hasFilters = Boolean(q || status || payment || delivery);
   const emptyMessage = totalCount === 0 && !hasFilters ? 'Todavía no hay pedidos.' : 'Ningún pedido coincide con los filtros.';
 
   return (

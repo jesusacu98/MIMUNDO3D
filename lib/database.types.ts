@@ -409,6 +409,7 @@ export interface Database {
         Row: {
           id: string;
           order_date: string | null;
+          delivery_date: string | null;
           client_name: string;
           payment_status: string | null;
           payment_method: string | null;
@@ -422,6 +423,7 @@ export interface Database {
         Insert: {
           id?: string;
           order_date?: string | null;
+          delivery_date?: string | null;
           client_name: string;
           payment_status?: string | null;
           payment_method?: string | null;
@@ -434,6 +436,7 @@ export interface Database {
         Update: {
           id?: string;
           order_date?: string | null;
+          delivery_date?: string | null;
           client_name?: string;
           payment_status?: string | null;
           payment_method?: string | null;
