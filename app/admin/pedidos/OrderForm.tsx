@@ -10,6 +10,7 @@ import ProductPicker,{ type PickerProduct } from './ProductPicker';
 export interface OrderItemValue {
   product_id: string;
   product_name: string;
+  client_description?: string;
   quantity: string;
   sale_price: string;
   cost: string;
@@ -40,6 +41,7 @@ interface ItemState {
   key: string;
   selectedProduct: PickerProduct | null;
   productName: string;
+  clientDescription: string;
   quantity: string;
   salePrice: string;
   cost: string;
@@ -60,6 +62,7 @@ function toItemState(value: OrderItemValue | undefined, products: PickerProduct[
     key: newItemKey(),
     selectedProduct: products.find((p) => p.id === value?.product_id) ?? null,
     productName: value?.product_name ?? '',
+    clientDescription: value?.client_description ?? '',
     quantity: value?.quantity || '1',
     salePrice: value?.sale_price ?? '',
     cost: value?.cost ?? '',
@@ -129,6 +132,7 @@ export default function OrderForm({ action, products, initialValues, error, subm
   const itemsPayload = items.map((item) => ({
     product_id: item.selectedProduct?.id ?? '',
     product_name: item.productName,
+    client_description: item.clientDescription,
     quantity: item.quantity,
     sale_price: item.salePrice,
     cost: item.cost,
@@ -258,6 +262,19 @@ export default function OrderForm({ action, products, initialValues, error, subm
                 onChange={(e) => updateItem(item.key, { productName: e.target.value })}
                 className={`${inputClass} resize-y`}
               />
+              <p className="text-xs text-zinc-500 mt-1.5">Nota interna: sólo la ves tú en el admin.</p>
+            </div>
+
+            <div>
+              <label className={labelClass}>Descripción para el cliente</label>
+              <textarea
+                rows={3}
+                value={item.clientDescription}
+                onChange={(e) => updateItem(item.key, { clientDescription: e.target.value })}
+                placeholder="Lo que se le muestra al cliente en su nota (PDF). Ej: Expositor QR con logo, 3 redes sociales y datos bancarios"
+                className={`${inputClass} resize-y`}
+              />
+              <p className="text-xs text-zinc-500 mt-1.5">Si lo dejas vacío, la nota usa la descripción interna de arriba.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

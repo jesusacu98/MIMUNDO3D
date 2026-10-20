@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   // El generador de anuncios lee fuentes y el logo con fs: sin esto Vercel no los empaqueta.
   outputFileTracingIncludes: {
     "/api/admin/anuncios/generate": ["./assets/fonts/**/*", "./public/logo.png"],
+    "/api/admin/pedidos/[id]/ticket": ["./assets/fonts/**/*", "./public/logo.png"],
   },
   images: {
     // Sin optimizador de Vercel: su cuota gratis se agotó y las imágenes devolvían 402 «Payment

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Download, QrCode as QrCodeIcon } from 'lucide-react';
-import { buildQrSvg, downloadSvg } from '@/lib/qr';
+import { buildQrSvg, downloadSvg, type QrShape } from '@/lib/qr';
 
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
@@ -11,6 +11,7 @@ const labelClass = 'text-xs font-bold text-zinc-800 uppercase tracking-wider';
 export default function QRGenerator() {
   const [url, setUrl] = useState('');
   const [fileName, setFileName] = useState('');
+  const [shape, setShape] = useState<QrShape>('square');
 
   // buildQrSvg es síncrona: no hace falta useEffect/estado para esto,
   // se calcula directo en el render (memoizado para no rehacerlo de más).
@@ -18,11 +19,11 @@ export default function QRGenerator() {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) return { svg: null, error: null };
     try {
-      return { svg: buildQrSvg(trimmedUrl), error: null };
+      return { svg: buildQrSvg(trimmedUrl, { shape }), error: null };
     } catch {
       return { svg: null, error: 'No se pudo generar el QR con ese texto.' };
     }
-  }, [url]);
+  }, [url, shape]);
 
   const ready = svg !== null;
 
@@ -46,6 +47,25 @@ export default function QRGenerator() {
             onChange={(e) => setUrl(e.target.value)}
             className={inputClass}
           />
+        </div>
+        <div>
+          <span className={labelClass}>Forma</span>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {([['square', 'Cuadrado'], ['round', 'Circular']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setShape(value)}
+                aria-pressed={shape === value}
+                className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-all cursor-pointer ${
+                  shape === value ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500 mt-1.5">Circular pone el código dentro de un círculo con aro (los módulos siguen siendo cuadrados para que se lea bien).</p>
         </div>
         <div>
           <label htmlFor="fileName" className={labelClass}>

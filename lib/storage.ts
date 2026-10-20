@@ -273,3 +273,38 @@ export async function uploadAdJpeg(jpeg: Buffer, baseName: string): Promise<{ ur
   } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
   return { url: publicUrl };
 }
+
+// Bocetos y PNG para Fusion del generador de /admin/disenos: mismo bucket que los anuncios, carpeta disenos/.
+const DESIGN_PREFIX = 'disenos/';
+
+export async function uploadDesignImage(
+  body: Buffer,
+  baseName: string,
+  ext: 'jpg' | 'png',
+): Promise<{ url: string } | { error: string }> {
+  const objectPath = DESIGN_PREFIX + slugifyFileName(`${baseName}.${ext}`);
+
+  const { error } = await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).upload(objectPath, body, {
+    contentType: ext === 'png' ? 'image/png' : 'image/jpeg',
+    upsert: false,
+  });
+  if (error) return { error: 'No se pudo guardar la imagen del diseño: ' + error.message };
+
+  const {
+    data: { publicUrl },
+  } = supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(objectPath);
+  return { url: publicUrl };
+}
+
+// Sólo borra lo que generó este módulo (disenos/…).
+export async function deleteDesignImagesIfManaged(imageUrls: string[]): Promise<void> {
+  const marker = `/storage/v1/object/public/${SITE_IMAGES_BUCKET}/`;
+  const paths = imageUrls
+    .map((url) => {
+      const i = url.indexOf(marker);
+      return i === -1 ? '' : decodeURIComponent(url.slice(i + marker.length));
+    })
+    .filter((p) => p.startsWith(DESIGN_PREFIX));
+  if (paths.length === 0) return;
+  await supabaseAdmin.storage.from(SITE_IMAGES_BUCKET).remove(paths);
+}

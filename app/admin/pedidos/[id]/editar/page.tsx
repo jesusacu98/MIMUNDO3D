@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Receipt } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import OrderForm from '../../OrderForm';
@@ -32,7 +32,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
       .maybeSingle(),
     supabaseAdmin
       .from('order_items')
-      .select('product_id, product_name, quantity, sale_price, cost, makerworld_link')
+      .select('*')
       .eq('order_id', id)
       .order('created_at', { ascending: true }),
     supabaseAdmin.from('products').select('id, name, price, cost, image_url, is_active').order('display_order', { ascending: true }),
@@ -43,6 +43,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
   const items = (orderItemsData ?? []).map((item) => ({
     product_id: item.product_id ?? '',
     product_name: item.product_name,
+    client_description: item.client_description ?? '',
     quantity: String(item.quantity),
     sale_price: item.sale_price != null ? String(item.sale_price) : '',
     cost: item.cost != null ? String(item.cost) : '',
@@ -58,7 +59,16 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
           <ArrowLeft className="w-4 h-4" />
           Volver a pedidos
         </Link>
-        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-8">Editar pedido</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950">Editar pedido</h1>
+          <Link
+            href={`/admin/pedidos/${id}/ticket`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors"
+          >
+            <Receipt className="w-4 h-4" />
+            Nota para el cliente
+          </Link>
+        </div>
 
         <OrderForm
           action={updateOrderWithId}

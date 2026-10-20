@@ -455,6 +455,8 @@ export interface Database {
           // Vínculo opcional a products.id — nulo en líneas personalizadas/fuera de catálogo.
           product_id: string | null;
           product_name: string;
+          // Descripción para el cliente (nota/PDF); product_name es la nota interna del admin.
+          client_description: string | null;
           quantity: number;
           sale_price: number | null;
           cost: number | null;
@@ -466,6 +468,7 @@ export interface Database {
           order_id: string;
           product_id?: string | null;
           product_name: string;
+          client_description?: string | null;
           quantity?: number;
           sale_price?: number | null;
           cost?: number | null;
@@ -477,6 +480,7 @@ export interface Database {
           order_id?: string;
           product_id?: string | null;
           product_name?: string;
+          client_description?: string | null;
           quantity?: number;
           sale_price?: number | null;
           cost?: number | null;
@@ -627,6 +631,39 @@ export interface Database {
           hashtags?: string[];
           whatsapp_text?: string;
           published?: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      design_history: {
+        Row: {
+          id: string;
+          kind: string;
+          description: string;
+          model: string;
+          image_urls: string[];
+          fusion_urls: unknown;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          kind?: string;
+          description: string;
+          model?: string;
+          image_urls?: string[];
+          fusion_urls?: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          kind?: string;
+          description?: string;
+          model?: string;
+          image_urls?: string[];
+          fusion_urls?: unknown;
           created_at?: string;
           updated_at?: string;
         };

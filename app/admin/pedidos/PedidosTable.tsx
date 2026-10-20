@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Pencil } from 'lucide-react';
+import { Pencil, Receipt } from 'lucide-react';
 import { orderStatusClass } from '@/lib/orderStatuses';
 import DeleteOrderButton from './DeleteOrderButton';
 
@@ -84,6 +84,7 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
               <th className="text-left px-5 py-3 font-semibold">Estado</th>
               <th className="px-5 py-3" />
               <th className="px-5 py-3" />
+              <th className="px-5 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -121,13 +122,22 @@ export default function PedidosTable({ orders, emptyMessage }: PedidosTableProps
                   </Link>
                 </td>
                 <td className="px-5 py-3 text-right">
+                  <Link
+                    href={`/admin/pedidos/${order.id}/ticket`}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-primary"
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    Nota
+                  </Link>
+                </td>
+                <td className="px-5 py-3 text-right">
                   <DeleteOrderButton label={`${order.client_name} - ${order.productSummary}`} action={order.deleteAction} />
                 </td>
               </tr>
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-5 py-10 text-center text-zinc-500">
+                <td colSpan={13} className="px-5 py-10 text-center text-zinc-500">
                   {emptyMessage}
                 </td>
               </tr>

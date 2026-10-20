@@ -91,9 +91,14 @@ function parseItems(formData: FormData): { items: ParsedItem[] } | { error: stri
     const productId = String(record.product_id || '').trim();
     const makerworldLink = String(record.makerworld_link || '').trim();
 
+    // Se omite si está vacío: así guardar pedidos sigue funcionando aunque aún no se haya corrido
+    // supabase/schema_orders_client_description.sql (la columna no existiría).
+    const clientDescription = String(record.client_description || '').trim();
+
     items.push({
       product_id: productId || null,
       product_name: productName,
+      ...(clientDescription ? { client_description: clientDescription } : {}),
       quantity,
       sale_price: salePrice,
       cost,

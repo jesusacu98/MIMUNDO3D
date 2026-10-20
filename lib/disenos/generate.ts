@@ -12,6 +12,8 @@ export interface GenerateDesignSketchesInput {
   /** Imágenes de referencia (logo, ejemplos de forma/estilo...), si el usuario adjuntó alguna. */
   referenceImages?: File[];
   count: number;
+  /** Los gpt-image-* admiten vertical (1024x1536); el resto queda en cuadrado. */
+  portrait?: boolean;
 }
 
 /** Genera bocetos/mockups (no un modelo 3D) en base64, listos para mostrar/descargar. */
@@ -21,9 +23,11 @@ export async function generateDesignSketches({
   prompt,
   referenceImages,
   count,
+  portrait,
 }: GenerateDesignSketchesInput): Promise<string[]> {
   const client = new OpenAI({ apiKey });
   const n = Math.min(Math.max(1, Math.round(count)), MAX_COUNT);
+  const size = portrait && model.startsWith('gpt-image') ? '1024x1536' : '1024x1024';
   const images = (referenceImages ?? []).filter((file) => file.size > 0);
 
   // Calidad "auto" a propósito: es la única que funciona igual en toda la lista de modelos
@@ -32,8 +36,8 @@ export async function generateDesignSketches({
   // `images.edit` acepta una o varias imágenes de referencia (hasta 16 según la API de OpenAI).
   const response: OpenAI.ImagesResponse =
     images.length > 0
-      ? await client.images.edit({ model, image: images, prompt, n, size: '1024x1024', quality: 'auto' })
-      : await client.images.generate({ model, prompt, n, size: '1024x1024', quality: 'auto' });
+      ? await client.images.edit({ model, image: images, prompt, n, size, quality: 'auto' })
+      : await client.images.generate({ model, prompt, n, size, quality: 'auto' });
 
   return (response.data ?? [])
     .filter((image): image is OpenAI.Image & { b64_json: string } => Boolean(image.b64_json))

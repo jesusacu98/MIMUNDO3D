@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Box, ChevronLeft, ChevronRight, Download, FileCode, ImagePlus, Loader2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import type { DesignRecord } from '@/lib/disenos/history';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
 const inputClass =
@@ -23,6 +24,12 @@ interface StlState {
   scad?: string;
   size?: { x: number; y: number; z: number };
   warnings?: string[];
+}
+
+interface FusionState {
+  status: 'loading' | 'done' | 'error';
+  error?: string;
+  png?: string;
 }
 
 // El boceto llega como PNG de 1024px en base64 (varios MB); para el modelo de visión alcanza un
@@ -47,7 +54,26 @@ function shrinkToJpeg(dataUrl: string, maxSide = 1024): Promise<string> {
   });
 }
 
-export default function DisenosForm() {
+// Las imágenes guardadas viven en Storage; se bajan a data URL para que el visor, la descarga y el
+// reescalado (canvas) funcionen igual que con una generación recién hecha.
+async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('imagen');
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('imagen'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+export default function DisenosForm({ initialHistory, historyMissing }: { initialHistory: DesignRecord[]; historyMissing: boolean }) {
+  const [history, setHistory] = useState<DesignRecord[]>(initialHistory);
+  const [currentDesignId, setCurrentDesignId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [kind, setKind] = useState<'expositor' | 'libre'>('expositor');
   const [description, setDescription] = useState('');
   const [logos, setLogos] = useState<LogoEntry[]>([]);
   const logosRef = useRef<LogoEntry[]>([]);
@@ -64,6 +90,7 @@ export default function DisenosForm() {
   const [zoomed, setZoomed] = useState(false);
   const [maxSizeMm, setMaxSizeMm] = useState(60);
   const [stlByIndex, setStlByIndex] = useState<Record<number, StlState>>({});
+  const [fusionByIndex, setFusionByIndex] = useState<Record<number, FusionState>>({});
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
 
@@ -170,6 +197,77 @@ export default function DisenosForm() {
     }
   }
 
+  async function generateFusionImage(index: number) {
+    const src = images[index];
+    if (!src) return;
+    setFusionByIndex((prev) => ({ ...prev, [index]: { status: 'loading' } }));
+    try {
+      const image = await shrinkToJpeg(src, 1536);
+      const res = await fetch('/api/admin/disenos/fusion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image,
+          model: modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice,
+          designId: currentDesignId,
+          index,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFusionByIndex((prev) => ({ ...prev, [index]: { status: 'error', error: data.error || 'No se pudo preparar la imagen.' } }));
+        return;
+      }
+      setFusionByIndex((prev) => ({ ...prev, [index]: { status: 'done', png: data.png } }));
+      if (currentDesignId && data.url) {
+        setHistory((prev) =>
+          prev.map((d) => (d.id === currentDesignId ? { ...d, fusionUrls: { ...d.fusionUrls, [String(index)]: data.url } } : d)),
+        );
+      }
+    } catch {
+      setFusionByIndex((prev) => ({ ...prev, [index]: { status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' } }));
+    }
+  }
+
+  async function openDesign(design: DesignRecord) {
+    setOpeningId(design.id);
+    setError(null);
+    try {
+      const fusionEntries = Object.entries(design.fusionUrls);
+      const [loaded, fusionLoaded] = await Promise.all([
+        Promise.all(design.imageUrls.map(urlToDataUrl)),
+        Promise.all(fusionEntries.map(([, url]) => urlToDataUrl(url))),
+      ]);
+      setKind(design.kind);
+      setDescription(design.description);
+      setImages(loaded);
+      setCurrentDesignId(design.id);
+      setStlByIndex({});
+      const restored: Record<number, FusionState> = {};
+      fusionEntries.forEach(([index], n) => {
+        restored[Number(index)] = { status: 'done', png: fusionLoaded[n].slice(fusionLoaded[n].indexOf(',') + 1) };
+      });
+      setFusionByIndex(restored);
+      setNotice(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      setError('No se pudieron cargar las imágenes de ese diseño.');
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  async function deleteDesign(design: DesignRecord) {
+    if (!window.confirm('¿Borrar este diseño del historial? Se borran también sus imágenes.')) return;
+    const res = await fetch(`/api/admin/disenos/${design.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      setError('No se pudo borrar el diseño.');
+      return;
+    }
+    setHistory((prev) => prev.filter((d) => d.id !== design.id));
+    if (currentDesignId === design.id) setCurrentDesignId(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) {
@@ -187,6 +285,7 @@ export default function DisenosForm() {
 
     try {
       const formData = new FormData();
+      formData.set('kind', kind);
       formData.set('description', description);
       formData.set('count', String(count));
       formData.set('model', model);
@@ -198,8 +297,19 @@ export default function DisenosForm() {
         setError(data.error || 'No se pudo generar el diseño.');
         return;
       }
-      setImages(data.images ?? []);
+      setNotice(null);
+      if (data.design) {
+        const design: DesignRecord = data.design;
+        setImages(await Promise.all(design.imageUrls.map(urlToDataUrl)));
+        setCurrentDesignId(design.id);
+        setHistory((prev) => [design, ...prev]);
+      } else {
+        setImages(data.images ?? []);
+        setCurrentDesignId(null);
+        if (!historyMissing) setNotice('No se pudo guardar esta generación en el historial; descargá lo que te sirva antes de refrescar.');
+      }
       setStlByIndex({});
+      setFusionByIndex({});
     } catch {
       setError('No se pudo conectar con el servidor. Intentá de nuevo.');
     } finally {
@@ -211,6 +321,16 @@ export default function DisenosForm() {
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-6">
         <div>
+          <label htmlFor="kind" className={labelClass}>
+            Tipo de diseño
+          </label>
+          <select id="kind" value={kind} onChange={(e) => setKind(e.target.value as 'expositor' | 'libre')} className={inputClass}>
+            <option value="expositor">Expositor con QR y redes (foto realista)</option>
+            <option value="libre">Libre (boceto de pieza imprimible)</option>
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="description" className={labelClass}>
             Qué querés diseñar
           </label>
@@ -219,7 +339,11 @@ export default function DisenosForm() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            placeholder="Ej: llavero con forma de gato sentado, estilo minimalista"
+            placeholder={
+              kind === 'expositor'
+                ? 'Ej: expositor para barbería «The Capitan», placa redonda blanca con borde cobre, tijeras decorativas a la izquierda, íconos de Facebook, Instagram y Wi-Fi con sus QR, base negra'
+                : 'Ej: llavero con forma de gato sentado, estilo minimalista'
+            }
             className={inputClass}
           />
         </div>
@@ -341,6 +465,13 @@ export default function DisenosForm() {
         </button>
       </form>
 
+      {notice && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</p>}
+      {historyMissing && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          El historial no está activo: falta correr <code>supabase/schema_disenos.sql</code> en el SQL Editor de Supabase. Mientras tanto, lo que generes se pierde al refrescar.
+        </p>
+      )}
+
       {images.length > 0 && (
         <div className="bg-white border border-zinc-200/60 rounded-2xl p-4 sm:p-5">
           <label htmlFor="maxSize" className={labelClass}>
@@ -390,6 +521,35 @@ export default function DisenosForm() {
                 {stlByIndex[i]?.status === 'loading' ? 'Modelando (puede tardar 1-2 min)...' : stlByIndex[i]?.status === 'done' ? 'Volver a generar STL' : 'Generar STL'}
               </button>
 
+              <button
+                type="button"
+                onClick={() => generateFusionImage(i)}
+                disabled={fusionByIndex[i]?.status === 'loading'}
+                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl border border-zinc-900 text-zinc-900 hover:bg-zinc-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {fusionByIndex[i]?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenTool className="w-4 h-4" />}
+                {fusionByIndex[i]?.status === 'loading' ? 'Preparando (puede tardar 1 min)...' : fusionByIndex[i]?.status === 'done' ? 'Volver a preparar para Fusion' : 'Imagen para Fusion'}
+              </button>
+
+              {fusionByIndex[i]?.status === 'error' && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{fusionByIndex[i].error}</p>
+              )}
+
+              {fusionByIndex[i]?.status === 'done' && (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`data:image/png;base64,${fusionByIndex[i].png}`} alt="Arte lineal para Fusion" className="w-full max-h-72 object-contain rounded-lg bg-white border border-zinc-200" />
+                  <a
+                    href={`data:image/png;base64,${fusionByIndex[i].png}`}
+                    download={`diseno-${i + 1}-fusion.png`}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Descargar PNG para Fusion
+                  </a>
+                </div>
+              )}
+
               {stlByIndex[i]?.status === 'error' && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{stlByIndex[i].error}</p>
               )}
@@ -427,7 +587,55 @@ export default function DisenosForm() {
         </div>
       )}
 
-      {!loading && images.length === 0 && !error && (
+      {history.length > 0 && (
+        <section className="space-y-3 pt-2">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900">
+            <History className="w-5 h-5 text-zinc-500" />
+            Historial
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {history.map((design) => (
+              <div
+                key={design.id}
+                className={`bg-white border rounded-2xl p-3 flex gap-3 ${currentDesignId === design.id ? 'border-primary' : 'border-zinc-200/60'}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => openDesign(design)}
+                  disabled={openingId !== null}
+                  className="flex gap-3 flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
+                >
+                  {/* Miniatura desde Storage (el optimizador de next/image está desactivado) */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={design.imageUrls[0]} alt="" className="w-20 h-24 rounded-lg object-cover bg-zinc-50 shrink-0" />
+                  <span className="min-w-0 space-y-1">
+                    <span className="block text-sm text-zinc-900 line-clamp-3">{design.description}</span>
+                    <span className="block text-xs text-zinc-500">
+                      {design.kind === 'expositor' ? 'Expositor' : 'Libre'} · {design.imageUrls.length} variante{design.imageUrls.length === 1 ? '' : 's'}
+                      {Object.keys(design.fusionUrls).length > 0 && ` · ${Object.keys(design.fusionUrls).length} para Fusion`}
+                    </span>
+                    <span className="block text-xs text-zinc-400">
+                      {openingId === design.id
+                        ? 'Cargando...'
+                        : new Date(design.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Mazatlan' })}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteDesign(design)}
+                  aria-label="Borrar del historial"
+                  className="self-start p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && images.length === 0 && !error && history.length === 0 && (
         <div className="border border-dashed border-zinc-200 rounded-2xl p-10 text-center text-zinc-400 flex flex-col items-center gap-2">
           <ImagePlus className="w-8 h-8" />
           <p className="text-sm">Los bocetos generados van a aparecer acá.</p>
