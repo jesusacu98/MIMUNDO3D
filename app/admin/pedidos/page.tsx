@@ -34,7 +34,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
 
   const currentPage = Math.max(1, Number(pageParam) || 1);
   const q = (qParam ?? '').trim();
-  const status = statusParam ?? '';
+  const statuses = (statusParam ?? '').split(',').filter((s) => ORDER_STATUSES.includes(s));
   const payment = paymentParam ?? '';
   const delivery = /^\d{4}-\d{2}-\d{2}$/.test(deliveryParam ?? '') ? (deliveryParam as string) : '';
 
@@ -67,7 +67,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
     .from('orders')
     .select('id, order_date, delivery_date, client_name, payment_status, payment_method, advance_amount, order_status', { count: 'exact' });
   if (delivery) pageQuery = pageQuery.eq('delivery_date', delivery);
-  if (status) pageQuery = pageQuery.eq('order_status', status);
+  if (statuses.length) pageQuery = pageQuery.in('order_status', statuses);
   if (payment) pageQuery = pageQuery.eq('payment_status', payment);
   if (q) pageQuery = pageQuery.ilike('client_name', `%${q}%`);
   pageQuery = pageQuery
@@ -101,7 +101,7 @@ export default async function AdminPedidosPage({ searchParams }: PageProps) {
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const hasFilters = Boolean(q || status || payment || delivery);
+  const hasFilters = Boolean(q || statuses.length || payment || delivery);
   const emptyMessage = totalCount === 0 && !hasFilters ? 'Todavía no hay pedidos.' : 'Ningún pedido coincide con los filtros.';
 
   return (

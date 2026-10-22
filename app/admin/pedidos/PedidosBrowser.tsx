@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '@/lib/orderStatuses';
 import PedidosTable, { type OrderRow } from './PedidosTable';
+import StatusMultiSelect from './StatusMultiSelect';
 
 interface PedidosBrowserProps {
   orders: OrderRow[];
@@ -28,7 +29,8 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const status = searchParams.get('status') ?? '';
+  // Varios estatus viajan en la URL separados por coma: ?status=Imprimiendo,Impreso
+  const statuses = (searchParams.get('status') ?? '').split(',').filter((s) => ORDER_STATUSES.includes(s));
   const payment = searchParams.get('payment') ?? '';
   const delivery = searchParams.get('delivery') ?? '';
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
@@ -65,7 +67,7 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
     navigate(params);
   }
 
-  const hasActiveFilters = Boolean(query || status || payment || delivery);
+  const hasActiveFilters = Boolean(query || statuses.length || payment || delivery);
 
   return (
     <div>
@@ -84,14 +86,12 @@ export default function PedidosBrowser({ orders, emptyMessage, currentPage, tota
             className={`${inputClass} w-full pl-9`}
           />
         </div>
-        <select value={status} onChange={(e) => updateParams({ status: e.target.value })} className={inputClass}>
-          <option value="">Todos los estatus</option>
-          {ORDER_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <StatusMultiSelect
+          options={ORDER_STATUSES}
+          selected={statuses}
+          onChange={(next) => updateParams({ status: next.join(',') })}
+          className={inputClass}
+        />
         <input
           type="date"
           value={delivery}
