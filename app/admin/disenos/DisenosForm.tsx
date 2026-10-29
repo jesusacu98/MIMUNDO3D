@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Box, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Pencil, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { DesignRecord } from '@/lib/disenos/history';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
@@ -68,6 +68,133 @@ async function urlToDataUrl(url: string): Promise<string> {
   });
 }
 
+// Convierte una imagen que el usuario ya tiene (hecha en otra herramienta) en el PNG para Fusion,
+// con la misma ruta y el mismo prompt que los bocetos generados aquí. No se guarda en el historial.
+function ConvertUploadedImage({ model }: { model: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [state, setState] = useState<FusionState | null>(null);
+
+  function loadFile(file: File | undefined) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      setSource(dataUrl);
+      setPreviewUrl(dataUrl);
+      setState(null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function convert(strict = false) {
+    if (!source) return;
+    if (!model) {
+      setState({ status: 'error', error: 'Elegí o escribí un modelo de imagen en el formulario de arriba.' });
+      return;
+    }
+    setState({ status: 'loading' });
+    try {
+      const image = await shrinkToJpeg(source, 1536);
+      const res = await fetch('/api/admin/disenos/fusion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, model, strict }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setState({ status: 'error', error: data.error || 'No se pudo preparar la imagen.' });
+        return;
+      }
+      setState({ status: 'done', png: data.png });
+    } catch {
+      setState({ status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' });
+    }
+  }
+
+  return (
+    <div className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-4">
+      <div>
+        <h2 className="text-lg font-bold text-zinc-900">Convertir una imagen que ya tengo</h2>
+        <p className={helpClass}>
+          Subí un diseño hecho en otra herramienta y lo convierto en el PNG blanco y negro para Fusion (usa el modelo de imagen elegido arriba). No se guarda en el historial.
+        </p>
+      </div>
+
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { loadFile(e.target.files?.[0]); e.target.value = ''; }} />
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={(e) => { e.preventDefault(); setDragActive(false); loadFile(e.dataTransfer.files[0]); }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+        className={`flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed text-center cursor-pointer transition-colors ${
+          dragActive ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'
+        }`}
+      >
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl} alt="Imagen a convertir" className="max-h-56 object-contain rounded-lg" />
+        ) : (
+          <Upload className={`w-6 h-6 ${dragActive ? 'text-primary' : 'text-zinc-400'}`} />
+        )}
+        <p className="text-sm text-zinc-600">
+          {previewUrl ? 'Hacé clic o arrastrá otra para cambiarla' : <>Arrastrá una imagen acá o <span className="text-primary font-medium">hacé clic para elegirla</span></>}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => convert()}
+          disabled={!source || state?.status === 'loading'}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-900 text-zinc-900 hover:bg-zinc-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {state?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenTool className="w-4 h-4" />}
+          {state?.status === 'loading' ? 'Preparando (puede tardar 1 min)...' : 'Imagen para Fusion'}
+        </button>
+        <button
+          type="button"
+          onClick={() => convert(true)}
+          disabled={!source || state?.status === 'loading'}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <PenTool className="w-4 h-4" />
+          Imagen para Fusion (proporciones estrictas)
+        </button>
+      </div>
+
+      {state?.status === 'error' && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>}
+
+      {state?.status === 'done' && (
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`data:image/png;base64,${state.png}`} alt="Arte lineal para Fusion" className="w-full max-h-72 object-contain rounded-lg bg-white border border-zinc-200" />
+          <a
+            href={`data:image/png;base64,${state.png}`}
+            download="imagen-fusion.png"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Descargar PNG para Fusion
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ModifyState {
+  open: boolean;
+  text: string;
+  status: 'idle' | 'loading' | 'error';
+  error?: string;
+}
+
 export default function DisenosForm({ initialHistory, historyMissing }: { initialHistory: DesignRecord[]; historyMissing: boolean }) {
   const [history, setHistory] = useState<DesignRecord[]>(initialHistory);
   const [currentDesignId, setCurrentDesignId] = useState<string | null>(null);
@@ -91,6 +218,8 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
   const [maxSizeMm, setMaxSizeMm] = useState(60);
   const [stlByIndex, setStlByIndex] = useState<Record<number, StlState>>({});
   const [fusionByIndex, setFusionByIndex] = useState<Record<number, FusionState>>({});
+
+  const [modifyByIndex, setModifyByIndex] = useState<Record<number, ModifyState>>({});
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
 
@@ -229,6 +358,54 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
     }
   }
 
+  function patchModify(index: number, patch: Partial<ModifyState>) {
+    setModifyByIndex((prev) => {
+      const base: ModifyState = prev[index] ?? { open: false, text: '', status: 'idle' };
+      return { ...prev, [index]: { ...base, ...patch } };
+    });
+  }
+
+  // La variante modificada se agrega al final de la misma generación (la original se conserva).
+  async function modifyDesign(index: number) {
+    const src = images[index];
+    const text = modifyByIndex[index]?.text.trim();
+    if (!src || !text) {
+      patchModify(index, { status: 'error', error: 'Escribí qué querés cambiar del diseño.' });
+      return;
+    }
+    const model = modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice;
+    if (!model) {
+      patchModify(index, { status: 'error', error: 'Escribí el nombre del modelo o elegí uno de la lista.' });
+      return;
+    }
+    patchModify(index, { status: 'loading', error: undefined });
+    try {
+      const image = await shrinkToJpeg(src, 1536);
+      const res = await fetch('/api/admin/disenos/modify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, instructions: text, model, kind, designId: currentDesignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        patchModify(index, { status: 'error', error: data.error || 'No se pudo modificar el diseño.' });
+        return;
+      }
+      if (data.design) {
+        const design: DesignRecord = data.design;
+        const added = await urlToDataUrl(design.imageUrls[design.imageUrls.length - 1]);
+        setImages((prev) => [...prev, added]);
+        setHistory((prev) => prev.map((d) => (d.id === design.id ? design : d)));
+      } else {
+        setImages((prev) => [...prev, data.image]);
+        if (!historyMissing) setNotice('No se pudo guardar la modificación en el historial; descargala antes de refrescar.');
+      }
+      patchModify(index, { open: false, text: '', status: 'idle' });
+    } catch {
+      patchModify(index, { status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' });
+    }
+  }
+
   async function openDesign(design: DesignRecord) {
     setOpeningId(design.id);
     setError(null);
@@ -243,6 +420,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
       setImages(loaded);
       setCurrentDesignId(design.id);
       setStlByIndex({});
+      setModifyByIndex({});
       const restored: Record<number, FusionState> = {};
       fusionEntries.forEach(([index], n) => {
         restored[Number(index)] = { status: 'done', png: fusionLoaded[n].slice(fusionLoaded[n].indexOf(',') + 1) };
@@ -310,6 +488,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
       }
       setStlByIndex({});
       setFusionByIndex({});
+      setModifyByIndex({});
     } catch {
       setError('No se pudo conectar con el servidor. Intentá de nuevo.');
     } finally {
@@ -338,7 +517,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
+            rows={8}
             placeholder={
               kind === 'expositor'
                 ? 'Ej: expositor para barbería «The Capitan», placa redonda blanca con borde cobre, tijeras decorativas a la izquierda, íconos de Facebook, Instagram y Wi-Fi con sus QR, base negra'
@@ -465,7 +644,9 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
         </button>
       </form>
 
-      {notice && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</p>}
+      <ConvertUploadedImage model={modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice} />
+
+      {notice &&<p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</p>}
       {historyMissing && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           El historial no está activo: falta correr <code>supabase/schema_disenos.sql</code> en el SQL Editor de Supabase. Mientras tanto, lo que generes se pierde al refrescar.
@@ -510,6 +691,44 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
                 <Download className="w-4 h-4" />
                 Descargar
               </a>
+
+              <button
+                type="button"
+                onClick={() => patchModify(i, { open: !modifyByIndex[i]?.open })}
+                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+                Modificar diseño
+              </button>
+
+              {modifyByIndex[i]?.open && (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">
+                  <label htmlFor={`modify-${i}`} className={labelClass}>
+                    Qué querés cambiar
+                  </label>
+                  <textarea
+                    id={`modify-${i}`}
+                    value={modifyByIndex[i].text}
+                    onChange={(e) => patchModify(i, { text: e.target.value })}
+                    rows={4}
+                    placeholder="Ej: agregá una taza de café a la izquierda y cambiá la base a color negro"
+                    className={inputClass}
+                  />
+                  <p className={helpClass}>Se genera una variante nueva con el cambio; la original se conserva. Usa el modelo de imagen elegido arriba.</p>
+                  {modifyByIndex[i].status === 'error' && (
+                    <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{modifyByIndex[i].error}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => modifyDesign(i)}
+                    disabled={modifyByIndex[i].status === 'loading'}
+                    className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white text-sm font-semibold shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {modifyByIndex[i].status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                    {modifyByIndex[i].status === 'loading' ? 'Modificando (puede tardar 1 min)...' : 'Aplicar cambio'}
+                  </button>
+                </div>
+              )}
 
               <button
                 type="button"

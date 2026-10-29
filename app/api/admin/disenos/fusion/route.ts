@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   const image = typeof body?.image === 'string' ? body.image : '';
   const designId = typeof body?.designId === 'string' ? body.designId : '';
   const indexRaw = Number(body?.index);
+  const strict = body?.strict === true;
   const requestedModel = typeof body?.model === 'string' ? body.model.trim() : '';
   // Sólo la familia gpt-image-* admite editar con una imagen de referencia como se usa acá.
   const model = requestedModel.startsWith('gpt-image') ? requestedModel : DEFAULT_IMAGE_MODEL;
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const png = await buildFusionImage({ apiKey: settings.apiKey, model, imageDataUrl: image });
+    const png = await buildFusionImage({ apiKey: settings.apiKey, model, imageDataUrl: image, strict });
     const url = designId && Number.isInteger(indexRaw) && indexRaw >= 0 ? await saveFusionImage(designId, indexRaw, png) : null;
     return NextResponse.json({ png, url });
   } catch (error) {

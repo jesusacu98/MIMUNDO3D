@@ -70,6 +70,39 @@ export async function saveDesign(input: {
   }
 }
 
+/**
+ * Agrega una variante modificada al final de una generación existente (el índice nuevo es el largo
+ * anterior, así los PNG para Fusion de las demás siguen apuntando a su boceto). Devuelve el registro
+ * actualizado, o null si no se pudo.
+ */
+export async function appendDesignImage(designId: string, imageDataUrl: string, label: string): Promise<DesignRecord | null> {
+  let uploadedUrl: string | null = null;
+  try {
+    const { data: row } = await supabaseAdmin.from('design_history').select('*').eq('id', designId).single();
+    if (!row) return null;
+
+    const jpeg = await sharp(Buffer.from(imageDataUrl.slice(imageDataUrl.indexOf(',') + 1), 'base64'))
+      .jpeg({ quality: 88, mozjpeg: true })
+      .toBuffer();
+    const result = await uploadDesignImage(jpeg, `${row.kind}-mod-${label.slice(0, 30)}`, 'jpg');
+    if ('error' in result) throw new Error(result.error);
+    uploadedUrl = result.url;
+
+    const { data, error } = await supabaseAdmin
+      .from('design_history')
+      .update({ image_urls: [...(row.image_urls ?? []), result.url] })
+      .eq('id', designId)
+      .select('*')
+      .single();
+    if (error || !data) throw new Error(error?.message ?? 'sin fila');
+    return toDesignRecord(data);
+  } catch (error) {
+    console.error('[disenos] No se pudo guardar la modificación en el historial:', error);
+    if (uploadedUrl) await deleteDesignImagesIfManaged([uploadedUrl]);
+    return null;
+  }
+}
+
 /** Guarda el PNG para Fusion de una variante en su generación. Devuelve la URL, o null si no se pudo. */
 export async function saveFusionImage(designId: string, index: number, pngBase64: string): Promise<string | null> {
   try {
