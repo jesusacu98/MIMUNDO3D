@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Box, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Pencil, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, Camera, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Pencil, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { DesignRecord } from '@/lib/disenos/history';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
@@ -366,10 +366,10 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
   }
 
   // La variante modificada se agrega al final de la misma generación (la original se conserva).
-  async function modifyDesign(index: number) {
+  async function modifyDesign(index: number, frontal = false) {
     const src = images[index];
     const text = modifyByIndex[index]?.text.trim();
-    if (!src || !text) {
+    if (!src || (!frontal && !text)) {
       patchModify(index, { status: 'error', error: 'Escribí qué querés cambiar del diseño.' });
       return;
     }
@@ -384,7 +384,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
       const res = await fetch('/api/admin/disenos/modify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image, instructions: text, model, kind, designId: currentDesignId }),
+        body: JSON.stringify({ image, instructions: text, frontal, model, kind, designId: currentDesignId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -400,7 +400,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
         setImages((prev) => [...prev, data.image]);
         if (!historyMissing) setNotice('No se pudo guardar la modificación en el historial; descargala antes de refrescar.');
       }
-      patchModify(index, { open: false, text: '', status: 'idle' });
+      patchModify(index, frontal ? { status: 'idle' } : { open: false, text: '', status: 'idle' });
     } catch {
       patchModify(index, { status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' });
     }
@@ -700,6 +700,22 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
                 <Pencil className="w-4 h-4" />
                 Modificar diseño
               </button>
+
+              {kind === 'expositor' && (
+                <button
+                  type="button"
+                  onClick={() => modifyDesign(i, true)}
+                  disabled={modifyByIndex[i]?.status === 'loading'}
+                  className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {modifyByIndex[i]?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  {modifyByIndex[i]?.status === 'loading' ? 'Procesando (puede tardar 1 min)...' : 'Regenerar en vista frontal'}
+                </button>
+              )}
+
+              {!modifyByIndex[i]?.open && modifyByIndex[i]?.status === 'error' && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{modifyByIndex[i].error}</p>
+              )}
 
               {modifyByIndex[i]?.open && (
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">

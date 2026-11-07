@@ -19,6 +19,15 @@ export function buildModifyPrompt(kind: DesignKind, instructions: string): strin
   ].join(' ');
 }
 
+// Rehace un boceto viejo (tomado en perspectiva de tres cuartos) como vista frontal, para poder
+// pasarlo a Fusion sin deformaciones. Mismo criterio que la "Toma" de EXPOSITOR_BRIEF.
+export const FRONTAL_PROMPT = [
+  'Rehaz la pieza de la imagen adjunta como una fotografía COMPLETAMENTE FRONTAL: la cámara está de frente y perpendicular a la placa, a la altura de su centro, sin giro ni ángulo de tres cuartos ni perspectiva; no se ve el grosor ni los costados de la pieza, sólo su cara.',
+  'Reconstruye la forma real: lo que en la foto original parece un óvalo achatado es un círculo PERFECTO, los recuadros de QR son cuadrados exactos, los íconos de redes son círculos perfectos y la placa recupera su ancho real.',
+  'Conserva todo lo demás igual: mismos elementos, textos, colores, adornos y su posición relativa; mismo estilo de foto realista sobre mesa con fondo desenfocado de interior de negocio. La pieza completa (placa y base) cabe en el encuadre, centrada y con un poco de margen.',
+  KEEP_RULES.expositor,
+].join(' ');
+
 export interface ModifyDesignInput {
   apiKey: string;
   /** Modelo de imagen (familia gpt-image-*, la única que admite editar con referencia). */
@@ -27,10 +36,12 @@ export interface ModifyDesignInput {
   /** Boceto a modificar como data URL (png/jpeg/webp). */
   imageDataUrl: string;
   instructions: string;
+  /** Ignora `instructions` y rehace el boceto en vista frontal (ver FRONTAL_PROMPT). */
+  frontal?: boolean;
 }
 
 /** Devuelve la imagen modificada como data URL PNG en base64. */
-export async function modifyDesignSketch({ apiKey, model, kind, imageDataUrl, instructions }: ModifyDesignInput): Promise<string> {
+export async function modifyDesignSketch({ apiKey, model, kind, imageDataUrl, instructions, frontal }: ModifyDesignInput): Promise<string> {
   const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(imageDataUrl);
   if (!match) throw new Error('La imagen del boceto no es válida.');
   const [, mime, b64] = match;
@@ -40,7 +51,7 @@ export async function modifyDesignSketch({ apiKey, model, kind, imageDataUrl, in
   const response = await client.images.edit({
     model,
     image: file,
-    prompt: buildModifyPrompt(kind, instructions),
+    prompt: frontal ? FRONTAL_PROMPT : buildModifyPrompt(kind, instructions),
     n: 1,
     size: kind === 'expositor' ? '1024x1536' : '1024x1024',
     quality: 'auto',
