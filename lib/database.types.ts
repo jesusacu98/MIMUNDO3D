@@ -644,6 +644,10 @@ export interface Database {
           model: string;
           image_urls: string[];
           fusion_urls: unknown;
+          // Pedido vinculado (supabase/schema_disenos_order.sql); falta si no se corrió esa migración.
+          order_id?: string | null;
+          // Índice del boceto elegido por el cliente dentro de image_urls.
+          order_variant?: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -654,6 +658,8 @@ export interface Database {
           model?: string;
           image_urls?: string[];
           fusion_urls?: unknown;
+          order_id?: string | null;
+          order_variant?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -664,6 +670,8 @@ export interface Database {
           model?: string;
           image_urls?: string[];
           fusion_urls?: unknown;
+          order_id?: string | null;
+          order_variant?: number | null;
           created_at?: string;
           updated_at?: string;
         };

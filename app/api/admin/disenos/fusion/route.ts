@@ -7,8 +7,8 @@ import { DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 import { saveFusionImage } from '@/lib/disenos/history';
 import { notifyAiError } from '@/lib/notify/email';
 
-// Una edición de imagen (calidad alta) + el procesado con sharp.
-export const maxDuration = 120;
+// Ubicar la pieza (modelo de texto) + una edición de imagen (calidad alta) + el procesado con sharp.
+export const maxDuration = 180;
 
 const MAX_IMAGE_CHARS = 3_000_000;
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const png = await buildFusionImage({ apiKey: settings.apiKey, model, imageDataUrl: image, strict });
+    const png = await buildFusionImage({ apiKey: settings.apiKey, model, imageDataUrl: image, strict, textModel: settings.model });
     const url = designId && Number.isInteger(indexRaw) && indexRaw >= 0 ? await saveFusionImage(designId, indexRaw, png) : null;
     return NextResponse.json({ png, url });
   } catch (error) {

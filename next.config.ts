@@ -7,7 +7,8 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
 const nextConfig: NextConfig = {
   devIndicators: false,
   // OpenSCAD compilado a WASM (~11MB): se carga desde node_modules en vez de empaquetarse.
-  serverExternalPackages: ["openscad-wasm-prebuilt"],
+  // potrace (trazado exacto de /admin/disenos) arrastra jimp: también se carga desde node_modules.
+  serverExternalPackages: ["openscad-wasm-prebuilt", "potrace"],
   // El generador de anuncios lee fuentes y el logo con fs: sin esto Vercel no los empaqueta.
   outputFileTracingIncludes: {
     "/api/admin/anuncios/generate": ["./assets/fonts/**/*", "./public/logo.png"],

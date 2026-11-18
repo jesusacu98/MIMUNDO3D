@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Box, Camera, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Loader2, PenTool, Pencil, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Box, Camera, ChevronLeft, ChevronRight, Download, FileCode, History, ImagePlus, Link2, Loader2, Ruler, PenTool, Pencil, Trash2, Upload, Wand2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { DesignRecord } from '@/lib/disenos/history';
+import type { Palette } from '@/lib/disenos/variants';
 import { IMAGE_MODELS, DEFAULT_IMAGE_MODEL } from '@/lib/disenos/models';
 
 const inputClass =
@@ -68,23 +70,91 @@ async function urlToDataUrl(url: string): Promise<string> {
   });
 }
 
-// Convierte una imagen que el usuario ya tiene (hecha en otra herramienta) en el PNG para Fusion,
-// con la misma ruta y el mismo prompt que los bocetos generados aquí. No se guarda en el historial.
-function ConvertUploadedImage({ model }: { model: string }) {
+interface TraceState {
+  status: 'loading' | 'done' | 'error';
+  error?: string;
+  png?: string;
+  svg?: string;
+  ratio?: number;
+}
+
+// "Trazado exacto": traza la foto sin IA de imagen (ruta /api/admin/disenos/trace). Es una
+// función aparte de "Imagen para Fusion"; no comparte estado ni ruta con ella.
+async function requestExactTrace(src: string): Promise<TraceState> {
+  try {
+    const image = await shrinkToJpeg(src, 1536);
+    const res = await fetch('/api/admin/disenos/trace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { status: 'error', error: data.error || 'No se pudo trazar la imagen.' };
+    return { status: 'done', png: data.png, svg: data.svg, ratio: data.ratio };
+  } catch {
+    return { status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' };
+  }
+}
+
+function TraceResult({ state, name }: { state: TraceState | undefined; name: string }) {
+  if (!state || state.status === 'loading') return null;
+  if (state.status === 'error') return <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>;
+  return (
+    <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 space-y-2">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`data:image/png;base64,${state.png}`} alt="Trazado exacto" className="w-full max-h-72 object-contain rounded-lg bg-white border border-zinc-200" />
+      <p className="text-xs text-sky-900">
+        Trazado directo de la foto, sin redibujar{state.ratio ? ` (ancho ÷ alto de la pieza: ${state.ratio.toFixed(2)})` : ''}. No se guarda en el historial: descargalo.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={`data:image/png;base64,${state.png}`}
+          download={`${name}-trazado.png`}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Descargar PNG
+        </a>
+        <a
+          href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(state.svg ?? '')}`}
+          download={`${name}-trazado.svg`}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-sky-300 text-sky-900 hover:bg-sky-100 text-xs font-semibold transition-colors"
+        >
+          <FileCode className="w-3.5 h-3.5" />
+          Descargar SVG (vectorial)
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Trabaja sobre una imagen que el usuario ya tiene (hecha en otra herramienta): la convierte en el
+// PNG para Fusion o la modifica con una instrucción, con las mismas rutas y prompts que los bocetos
+// generados aquí. No se guarda en el historial.
+function ConvertUploadedImage({ model, kind }: { model: string; kind: 'expositor' | 'libre' }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [state, setState] = useState<FusionState | null>(null);
+  const [modify, setModify] = useState<ModifyState>({ open: false, text: '', status: 'idle' });
+  const [modified, setModified] = useState<string[]>([]);
+  const [trace, setTrace] = useState<TraceState | null>(null);
+
+  const busy = state?.status === 'loading' || modify.status === 'loading' || trace?.status === 'loading';
+
+  function setAsSource(dataUrl: string) {
+    setSource(dataUrl);
+    setState(null);
+    setTrace(null);
+    setModify((prev) => ({ ...prev, status: 'idle', error: undefined }));
+  }
 
   function loadFile(file: File | undefined) {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (busy || !file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = String(reader.result);
-      setSource(dataUrl);
-      setPreviewUrl(dataUrl);
-      setState(null);
+      setAsSource(String(reader.result));
+      setModified([]);
     };
     reader.readAsDataURL(file);
   }
@@ -114,12 +184,50 @@ function ConvertUploadedImage({ model }: { model: string }) {
     }
   }
 
+  async function exactTrace() {
+    if (!source) return;
+    setTrace({ status: 'loading' });
+    setTrace(await requestExactTrace(source));
+  }
+
+  // Igual que "Modificar diseño" de los bocetos: genera una variante nueva y conserva la original.
+  async function applyModify() {
+    const text = modify.text.trim();
+    if (!source) return;
+    if (!text) {
+      setModify((prev) => ({ ...prev, status: 'error', error: 'Escribí qué querés cambiar del diseño.' }));
+      return;
+    }
+    if (!model) {
+      setModify((prev) => ({ ...prev, status: 'error', error: 'Elegí o escribí un modelo de imagen en el formulario de arriba.' }));
+      return;
+    }
+    setModify((prev) => ({ ...prev, status: 'loading', error: undefined }));
+    try {
+      const image = await shrinkToJpeg(source, 1536);
+      const res = await fetch('/api/admin/disenos/modify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, instructions: text, model, kind }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.image) {
+        setModify((prev) => ({ ...prev, status: 'error', error: data.error || 'No se pudo modificar el diseño.' }));
+        return;
+      }
+      setModified((prev) => [...prev, data.image]);
+      setModify({ open: false, text: '', status: 'idle' });
+    } catch {
+      setModify((prev) => ({ ...prev, status: 'error', error: 'No se pudo conectar con el servidor. Intentá de nuevo.' }));
+    }
+  }
+
   return (
     <div className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-4">
       <div>
         <h2 className="text-lg font-bold text-zinc-900">Convertir una imagen que ya tengo</h2>
         <p className={helpClass}>
-          Subí un diseño hecho en otra herramienta y lo convierto en el PNG blanco y negro para Fusion (usa el modelo de imagen elegido arriba). No se guarda en el historial.
+          Subí un diseño hecho en otra herramienta y después elegí qué hacer con él: convertirlo en el PNG blanco y negro para Fusion, trazarlo de forma exacta o modificarlo con una instrucción (Fusion y modificar usan el modelo de imagen elegido arriba). No se guarda en el historial.
         </p>
       </div>
 
@@ -136,37 +244,87 @@ function ConvertUploadedImage({ model }: { model: string }) {
           dragActive ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'
         }`}
       >
-        {previewUrl ? (
+        {source ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="Imagen a convertir" className="max-h-56 object-contain rounded-lg" />
+          <img src={source} alt="Imagen cargada" className="max-h-56 object-contain rounded-lg" />
         ) : (
           <Upload className={`w-6 h-6 ${dragActive ? 'text-primary' : 'text-zinc-400'}`} />
         )}
         <p className="text-sm text-zinc-600">
-          {previewUrl ? 'Hacé clic o arrastrá otra para cambiarla' : <>Arrastrá una imagen acá o <span className="text-primary font-medium">hacé clic para elegirla</span></>}
+          {source ? 'Hacé clic o arrastrá otra para cambiarla' : <>Arrastrá una imagen acá o <span className="text-primary font-medium">hacé clic para elegirla</span></>}
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => convert()}
-          disabled={!source || state?.status === 'loading'}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-900 text-zinc-900 hover:bg-zinc-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {state?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenTool className="w-4 h-4" />}
-          {state?.status === 'loading' ? 'Preparando (puede tardar 1 min)...' : 'Imagen para Fusion'}
-        </button>
-        <button
-          type="button"
-          onClick={() => convert(true)}
-          disabled={!source || state?.status === 'loading'}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          <PenTool className="w-4 h-4" />
-          Imagen para Fusion (proporciones estrictas)
-        </button>
-      </div>
+      {source && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => convert()}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-900 text-zinc-900 hover:bg-zinc-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {state?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenTool className="w-4 h-4" />}
+            {state?.status === 'loading' ? 'Preparando (puede tardar 1 min)...' : 'Imagen para Fusion'}
+          </button>
+          <button
+            type="button"
+            onClick={() => convert(true)}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-900 text-zinc-900 hover:bg-zinc-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <PenTool className="w-4 h-4" />
+            Imagen para Fusion (proporciones estrictas)
+          </button>
+          <button
+            type="button"
+            onClick={exactTrace}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-sky-700 text-sky-800 hover:bg-sky-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {trace?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ruler className="w-4 h-4" />}
+            {trace?.status === 'loading' ? 'Trazando (unos segundos)...' : 'Trazado exacto'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setModify((prev) => ({ ...prev, open: !prev.open }))}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <Pencil className="w-4 h-4" />
+            Modificar diseño
+          </button>
+        </div>
+      )}
+
+      {source && modify.open && (
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">
+          <label htmlFor="modify-upload" className={labelClass}>
+            Qué querés cambiar
+          </label>
+          <textarea
+            id="modify-upload"
+            value={modify.text}
+            onChange={(e) => setModify((prev) => ({ ...prev, text: e.target.value }))}
+            rows={4}
+            maxLength={1000}
+            placeholder="Ej: agregá una taza de café a la izquierda y cambiá la base a color negro"
+            className={inputClass}
+          />
+          <p className={helpClass}>
+            Se genera una variante nueva con el cambio; tu imagen original se conserva. Usa el modelo de imagen y el tipo de diseño elegidos arriba.
+          </p>
+          {modify.status === 'error' && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{modify.error}</p>}
+          <button
+            type="button"
+            onClick={applyModify}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white text-sm font-semibold shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {modify.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {modify.status === 'loading' ? 'Modificando (puede tardar 1 min)...' : 'Aplicar cambio'}
+          </button>
+        </div>
+      )}
 
       {state?.status === 'error' && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>}
 
@@ -184,6 +342,41 @@ function ConvertUploadedImage({ model }: { model: string }) {
           </a>
         </div>
       )}
+
+      <TraceResult state={trace ?? undefined} name="imagen" />
+
+      {modified.length > 0 && (
+        <div className="space-y-2">
+          <p className={labelClass}>Variantes modificadas</p>
+          <p className={helpClass}>No se guardan: descargá las que te sirvan. Con &quot;Usar esta imagen&quot; la variante pasa a ser la imagen cargada, para convertirla a Fusion o seguir modificándola.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {modified.map((src, i) => (
+              <div key={i} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 space-y-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`Variante modificada ${i + 1}`} className="w-full max-h-72 object-contain rounded-lg bg-white border border-zinc-200" />
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={src}
+                    download={`imagen-modificada-${i + 1}.png`}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Descargar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setAsSource(src)}
+                    disabled={busy || source === src}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-primary/5 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {source === src ? 'En uso' : 'Usar esta imagen'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -195,12 +388,85 @@ interface ModifyState {
   error?: string;
 }
 
-export default function DisenosForm({ initialHistory, historyMissing }: { initialHistory: DesignRecord[]; historyMissing: boolean }) {
+interface OrderOption {
+  id: string;
+  /** "Cliente · fecha · estatus", para reconocer el pedido en el desplegable. */
+  label: string;
+}
+
+// Selector de UNA imagen (diseño base / logo del modo "Variantes de colores"): clic o arrastrar.
+function SingleImagePicker({ id, label, help, file, onChange }: { id: string; label: string; help: string; file: File | null; onChange: (file: File | null) => void }) {
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const [over, setOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  function pick(list: FileList | null) {
+    const picked = list ? Array.from(list).find((f) => f.type.startsWith('image/')) : undefined;
+    if (picked) onChange(picked);
+  }
+
+  return (
+    <div>
+      <label htmlFor={id} className={labelClass}>
+        {label}
+      </label>
+      <input ref={inputRef} id={id} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ''; }} />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files); }}
+        className={`mt-2 flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${over ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'}`}
+      >
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl} alt="" className="w-20 h-20 rounded-lg object-contain border border-zinc-200 bg-white" />
+        ) : (
+          <Upload className="w-6 h-6 text-zinc-400 mx-3" />
+        )}
+        <p className="text-sm text-zinc-600 flex-1">
+          {file ? file.name : <>Arrastrá la imagen acá o <span className="text-primary font-medium">hacé clic para elegirla</span></>}
+        </p>
+        {file && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); }} aria-label="Quitar imagen" className="w-6 h-6 rounded-full bg-zinc-700 text-white flex items-center justify-center hover:bg-red-600 cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <p className={helpClass}>{help}</p>
+    </div>
+  );
+}
+
+export default function DisenosForm({
+  initialHistory,
+  historyMissing,
+  orders,
+}: {
+  initialHistory: DesignRecord[];
+  historyMissing: boolean;
+  orders: OrderOption[];
+}) {
   const [history, setHistory] = useState<DesignRecord[]>(initialHistory);
   const [currentDesignId, setCurrentDesignId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mode, setMode] = useState<'custom' | 'variants'>('custom');
+  const [variantBase, setVariantBase] = useState<File | null>(null);
+  const [variantLogo, setVariantLogo] = useState<File | null>(null);
+  const [variantNotes, setVariantNotes] = useState('');
+  // Paletas de la última tanda de variantes (una por imagen); vacío si la generación no es de ese modo.
+  const [palettes, setPalettes] = useState<Palette[]>([]);
   const [kind, setKind] = useState<'expositor' | 'libre'>('expositor');
+  const [orientation, setOrientation] = useState<'vertical' | 'horizontal'>('vertical');
   const [description, setDescription] = useState('');
   const [logos, setLogos] = useState<LogoEntry[]>([]);
   const logosRef = useRef<LogoEntry[]>([]);
@@ -218,8 +484,17 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
   const [maxSizeMm, setMaxSizeMm] = useState(60);
   const [stlByIndex, setStlByIndex] = useState<Record<number, StlState>>({});
   const [fusionByIndex, setFusionByIndex] = useState<Record<number, FusionState>>({});
+  const [traceByIndex, setTraceByIndex] = useState<Record<number, TraceState>>({});
 
   const [modifyByIndex, setModifyByIndex] = useState<Record<number, ModifyState>>({});
+  // Índice de la variante con el panel "Vincular a pedido" abierto.
+  const [linkIndex, setLinkIndex] = useState<number | null>(null);
+  const [linkChoice, setLinkChoice] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const currentDesign = history.find((d) => d.id === currentDesignId) ?? null;
+  const orderLabel = (orderId: string) => orders.find((o) => o.id === orderId)?.label ?? 'Pedido vinculado';
 
   const selectedDescription = IMAGE_MODELS.find((m) => m.id === modelChoice)?.description;
 
@@ -358,6 +633,14 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
     }
   }
 
+  async function generateExactTrace(index: number) {
+    const src = images[index];
+    if (!src) return;
+    setTraceByIndex((prev) => ({ ...prev, [index]: { status: 'loading' } }));
+    const result = await requestExactTrace(src);
+    setTraceByIndex((prev) => ({ ...prev, [index]: result }));
+  }
+
   function patchModify(index: number, patch: Partial<ModifyState>) {
     setModifyByIndex((prev) => {
       const base: ModifyState = prev[index] ?? { open: false, text: '', status: 'idle' };
@@ -406,6 +689,32 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
     }
   }
 
+  // Vincula una variante de la generación abierta a un pedido (o quita el vínculo con null). Cada
+  // generación tiene una sola variante vinculada: la que eligió el cliente.
+  async function linkToOrder(orderId: string | null, variant: number) {
+    if (!currentDesignId) return;
+    setLinkSaving(true);
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/admin/disenos/${currentDesignId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, variant }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLinkError(data.error || 'No se pudo vincular el diseño al pedido.');
+        return;
+      }
+      setHistory((prev) => prev.map((d) => (d.id === currentDesignId ? { ...d, orderId, orderVariant: orderId ? variant : null } : d)));
+      setLinkIndex(null);
+    } catch {
+      setLinkError('No se pudo conectar con el servidor. Intentá de nuevo.');
+    } finally {
+      setLinkSaving(false);
+    }
+  }
+
   async function openDesign(design: DesignRecord) {
     setOpeningId(design.id);
     setError(null);
@@ -416,9 +725,13 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
         Promise.all(fusionEntries.map(([, url]) => urlToDataUrl(url))),
       ]);
       setKind(design.kind);
+      setPalettes([]);
       setDescription(design.description);
       setImages(loaded);
       setCurrentDesignId(design.id);
+      setLinkIndex(null);
+      setLinkError(null);
+      setTraceByIndex({});
       setStlByIndex({});
       setModifyByIndex({});
       const restored: Record<number, FusionState> = {};
@@ -446,6 +759,59 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
     if (currentDesignId === design.id) setCurrentDesignId(null);
   }
 
+  async function handleVariantsSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!variantBase || !variantLogo) {
+      setError('Subí el diseño base y el logo del cliente.');
+      return;
+    }
+    const model = modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice;
+    if (!model) {
+      setError('Escribí el nombre del modelo o elegí uno de la lista.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.set('base', variantBase);
+      formData.set('logo', variantLogo);
+      formData.set('notes', variantNotes);
+      formData.set('count', String(count));
+      formData.set('model', model);
+      const res = await fetch('/api/admin/disenos/variants', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'No se pudieron generar las variantes.');
+        return;
+      }
+      setNotice(null);
+      setPalettes(data.palettes ?? []);
+      if (data.design) {
+        const design: DesignRecord = data.design;
+        setImages(await Promise.all(design.imageUrls.map(urlToDataUrl)));
+        setCurrentDesignId(design.id);
+        setDescription(design.description);
+        setHistory((prev) => [design, ...prev]);
+      } else {
+        setImages(data.images ?? []);
+        setCurrentDesignId(null);
+        if (!historyMissing) setNotice('No se pudo guardar esta generación en el historial; descargá lo que te sirva antes de refrescar.');
+      }
+      setKind('expositor');
+      setStlByIndex({});
+      setFusionByIndex({});
+      setTraceByIndex({});
+      setModifyByIndex({});
+      setLinkIndex(null);
+      setLinkError(null);
+    } catch {
+      setError('No se pudo conectar con el servidor. Intentá de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description.trim()) {
@@ -464,6 +830,7 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
     try {
       const formData = new FormData();
       formData.set('kind', kind);
+      formData.set('orientation', orientation);
       formData.set('description', description);
       formData.set('count', String(count));
       formData.set('model', model);
@@ -486,9 +853,13 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
         setCurrentDesignId(null);
         if (!historyMissing) setNotice('No se pudo guardar esta generación en el historial; descargá lo que te sirva antes de refrescar.');
       }
+      setPalettes([]);
       setStlByIndex({});
       setFusionByIndex({});
+      setTraceByIndex({});
       setModifyByIndex({});
+      setLinkIndex(null);
+      setLinkError(null);
     } catch {
       setError('No se pudo conectar con el servidor. Intentá de nuevo.');
     } finally {
@@ -498,6 +869,96 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="tablist" aria-label="Modo del generador">
+        {([
+          ['custom', 'Diseño personalizado', 'Diseñar una pieza desde cero a partir de una descripción.'],
+          ['variants', 'Variantes de colores', 'Tomar un diseño ya establecido y combinar colores según el logo del cliente.'],
+        ] as const).map(([id, title, hint]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={mode === id}
+            onClick={() => { setMode(id); setError(null); }}
+            className={`text-left rounded-2xl border px-4 py-3 transition-colors cursor-pointer ${mode === id ? 'border-primary bg-primary/5' : 'border-zinc-200/60 bg-white hover:border-zinc-300'}`}
+          >
+            <span className={`block text-sm font-semibold ${mode === id ? 'text-primary' : 'text-zinc-800'}`}>{title}</span>
+            <span className="block text-xs text-zinc-500 mt-0.5">{hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {mode === 'variants' && (
+        <form onSubmit={handleVariantsSubmit} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-6">
+          <SingleImagePicker
+            id="variant-base"
+            label="Diseño base"
+            help="La foto o imagen de uno de tus expositores ya hechos. Se conserva igual (forma, íconos, QR, textos); sólo cambian los colores y el logo."
+            file={variantBase}
+            onChange={setVariantBase}
+          />
+          <SingleImagePicker
+            id="variant-logo"
+            label="Logo del cliente"
+            help="De aquí salen las paletas: la primera usa los colores del logo y las demás son combinaciones con ellos."
+            file={variantLogo}
+            onChange={setVariantLogo}
+          />
+          <div>
+            <label htmlFor="variant-notes" className={labelClass}>
+              Indicaciones (opcional)
+            </label>
+            <textarea
+              id="variant-notes"
+              value={variantNotes}
+              onChange={(e) => setVariantNotes(e.target.value.slice(0, 500))}
+              rows={3}
+              placeholder="Ej: que la placa sea clara, nada de rojo, la base siempre negra"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="variant-count" className={labelClass}>
+              Cantidad de combinaciones
+            </label>
+            <select id="variant-count" value={count} onChange={(e) => setCount(Number(e.target.value))} className={inputClass}>
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="variant-model" className={labelClass}>
+              Modelo de imagen
+            </label>
+            <select id="variant-model" value={modelChoice} onChange={(e) => setModelChoice(e.target.value)} className={inputClass}>
+              {IMAGE_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} ({m.id})
+                </option>
+              ))}
+              <option value={CUSTOM_MODEL}>Otro (escribir el nombre)...</option>
+            </select>
+            {modelChoice === CUSTOM_MODEL && (
+              <input type="text" value={customModel} onChange={(e) => setCustomModel(e.target.value)} placeholder="nombre exacto del modelo" className={`${inputClass} mt-2`} />
+            )}
+            <p className={helpClass}>Tiene que ser de la familia gpt-image (edita con imágenes de referencia). Cada combinación cuesta una imagen.</p>
+          </div>
+          {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white font-semibold text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {loading ? 'Generando combinaciones (puede tardar 1-2 min)...' : 'Generar combinaciones'}
+          </button>
+        </form>
+      )}
+
+      {mode === 'custom' && (
       <form onSubmit={handleSubmit} className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-6">
         <div>
           <label htmlFor="kind" className={labelClass}>
@@ -508,6 +969,19 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
             <option value="libre">Libre (boceto de pieza imprimible)</option>
           </select>
         </div>
+
+        {kind === 'expositor' && (
+          <div>
+            <label htmlFor="orientation" className={labelClass}>
+              Orientación
+            </label>
+            <select id="orientation" value={orientation} onChange={(e) => setOrientation(e.target.value as 'vertical' | 'horizontal')} className={inputClass}>
+              <option value="vertical">Vertical (más alto que ancho)</option>
+              <option value="horizontal">Horizontal (más ancho que alto)</option>
+            </select>
+            <p className={helpClass}>Define la forma de la placa y el formato de la foto. Las imágenes para Fusion y las modificaciones respetan la forma de cada boceto.</p>
+          </div>
+        )}
 
         <div>
           <label htmlFor="description" className={labelClass}>
@@ -643,8 +1117,9 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
           {loading ? 'Generando...' : 'Generar diseños'}
         </button>
       </form>
+      )}
 
-      <ConvertUploadedImage model={modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice} />
+      {mode === 'custom' && <ConvertUploadedImage model={modelChoice === CUSTOM_MODEL ? customModel.trim() : modelChoice} kind={kind} />}
 
       {notice &&<p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</p>}
       {historyMissing && (
@@ -674,6 +1149,27 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
         </div>
       )}
 
+      {palettes.length > 0 && palettes.length === images.length && (
+        <div className="bg-white border border-zinc-200/60 rounded-2xl p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {palettes.map((p, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="text-xs font-bold text-zinc-800 w-5">{i + 1}</span>
+              <div className="flex gap-1" title="Colores de la pieza: placa, textos, íconos y base">
+                {[p.plate, p.relief, p.accent, p.base].map((c, j) => (
+                  <span key={j} title={c} style={{ backgroundColor: c }} className="w-6 h-6 rounded-md border border-zinc-200" />
+                ))}
+              </div>
+              <div className="flex gap-1 pl-2 border-l border-zinc-200" title="Colores del logo (no cambian)">
+                {p.logo.map((c, j) => (
+                  <span key={j} title={c} style={{ backgroundColor: c }} className="w-4 h-4 rounded-full border border-zinc-200 self-center" />
+                ))}
+              </div>
+              <span className="text-sm text-zinc-700">{p.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {images.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {images.map((src, i) => (
@@ -691,6 +1187,77 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
                 <Download className="w-4 h-4" />
                 Descargar
               </a>
+
+              {currentDesign && (() => {
+                const linkedHere = Boolean(currentDesign.orderId) && currentDesign.orderVariant === i;
+                return (
+                  <>
+                    {linkedHere && (
+                      <p className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-zinc-700">
+                        Variante elegida para el pedido:{' '}
+                        <Link href={`/admin/pedidos/${currentDesign.orderId}/editar`} className="text-primary font-semibold hover:underline">
+                          {orderLabel(currentDesign.orderId!)}
+                        </Link>
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkChoice(currentDesign.orderId ?? '');
+                        setLinkError(null);
+                        setLinkIndex((open) => (open === i ? null : i));
+                      }}
+                      className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl border border-primary text-primary hover:bg-primary/5 text-sm font-semibold transition-colors cursor-pointer"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      {linkedHere ? 'Cambiar pedido' : 'Vincular a pedido'}
+                    </button>
+
+                    {linkIndex === i && (
+                      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 space-y-2">
+                        <label htmlFor={`link-order-${i}`} className={labelClass}>
+                          Elegí el pedido
+                        </label>
+                        <select id={`link-order-${i}`} value={linkChoice} onChange={(e) => setLinkChoice(e.target.value)} className={inputClass}>
+                          <option value="">Seleccioná un pedido...</option>
+                          {orders.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        {orders.length === 0 && <p className={helpClass}>Todavía no hay pedidos cargados.</p>}
+                        <p className={helpClass}>
+                          Se vincula sólo esta variante.
+                          {currentDesign.orderId && !linkedHere && ' Reemplaza a la variante de este diseño que estaba vinculada antes.'}
+                        </p>
+                        {linkError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{linkError}</p>}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => linkToOrder(linkChoice, i)}
+                            disabled={!linkChoice || linkSaving}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark hover:brightness-95 text-white text-sm font-semibold shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {linkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                            Guardar vínculo
+                          </button>
+                          {linkedHere && (
+                            <button
+                              type="button"
+                              onClick={() => linkToOrder(null, i)}
+                              disabled={linkSaving}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-white text-sm font-medium transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              Quitar vínculo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <button
                 type="button"
@@ -785,6 +1352,18 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
                 </div>
               )}
 
+              <button
+                type="button"
+                onClick={() => generateExactTrace(i)}
+                disabled={traceByIndex[i]?.status === 'loading'}
+                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-xl border border-sky-700 text-sky-800 hover:bg-sky-50 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {traceByIndex[i]?.status === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ruler className="w-4 h-4" />}
+                {traceByIndex[i]?.status === 'loading' ? 'Trazando (unos segundos)...' : traceByIndex[i]?.status === 'done' ? 'Volver a trazar' : 'Trazado exacto'}
+              </button>
+
+              <TraceResult state={traceByIndex[i]} name={`diseno-${i + 1}`} />
+
               {stlByIndex[i]?.status === 'error' && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{stlByIndex[i].error}</p>
               )}
@@ -849,6 +1428,11 @@ export default function DisenosForm({ initialHistory, historyMissing }: { initia
                       {design.kind === 'expositor' ? 'Expositor' : 'Libre'} · {design.imageUrls.length} variante{design.imageUrls.length === 1 ? '' : 's'}
                       {Object.keys(design.fusionUrls).length > 0 && ` · ${Object.keys(design.fusionUrls).length} para Fusion`}
                     </span>
+                    {design.orderId && (
+                      <span className="block text-xs text-primary font-medium truncate">
+                        {design.orderVariant != null ? `Variante ${design.orderVariant + 1} · ` : ''}Pedido: {orderLabel(design.orderId)}
+                      </span>
+                    )}
                     <span className="block text-xs text-zinc-400">
                       {openingId === design.id
                         ? 'Cargando...'

@@ -24,7 +24,7 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
   const { data: roleRow } = await supabaseAuth.from('user_roles').select('role').eq('user_id', user.id).single();
   if (roleRow?.role !== 'admin') redirect('/admin/login');
 
-  const [{ data: order }, { data: orderItemsData }, { data: productsData }] = await Promise.all([
+  const [{ data: order }, { data: orderItemsData }, { data: productsData }, { data: designRows }] = await Promise.all([
     supabaseAdmin
       .from('orders')
       .select('id, order_date, delivery_date, client_name, payment_status, payment_method, advance_amount, whatsapp_link, order_status')
@@ -36,6 +36,9 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
       .eq('order_id', id)
       .order('created_at', { ascending: true }),
     supabaseAdmin.from('products').select('id, name, price, cost, image_url, is_active').order('display_order', { ascending: true }),
+    // Diseños vinculados desde /admin/disenos. Si la columna order_id aún no existe
+    // (supabase/schema_disenos_order.sql) la consulta falla y simplemente no se muestra nada.
+    supabaseAdmin.from('design_history').select('*').eq('order_id', id).order('created_at', { ascending: false }),
   ]);
 
   if (!order) notFound();
@@ -87,6 +90,38 @@ export default async function EditarPedidoPage({ params, searchParams }: PagePro
             items: items.length > 0 ? items : [{ product_id: '', product_name: '', quantity: '1', sale_price: '', cost: '', makerworld_link: '' }],
           }}
         />
+
+        {designRows && designRows.length > 0 && (
+          <section className="mt-8 bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900">Diseño elegido por el cliente</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Se vinculan desde el{' '}
+                <Link href="/admin/disenos" className="text-primary font-medium hover:underline">
+                  Generador de diseños
+                </Link>
+                . Hacé clic en una imagen para verla completa.
+              </p>
+            </div>
+            {designRows.map((design) => (
+              <div key={design.id} className="space-y-2">
+                <p className="text-sm text-zinc-700 line-clamp-2">{design.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {/* Sólo la variante elegida; los vínculos viejos sin variante muestran todas. */}
+                  {(design.image_urls ?? [])
+                    .filter((_, index) => design.order_variant == null || index === design.order_variant)
+                    .map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                        {/* Imagen de Storage (el optimizador de next/image está desactivado) */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" className="w-32 h-44 rounded-lg object-cover bg-zinc-50 border border-zinc-200" />
+                      </a>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
       </main>
     </div>
   );

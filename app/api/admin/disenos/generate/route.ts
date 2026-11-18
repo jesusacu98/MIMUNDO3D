@@ -24,6 +24,7 @@ export async function POST(request: Request) {
   const count = Number.isFinite(countRaw) && countRaw > 0 ? countRaw : 4;
 
   const kind = formData.get('kind') === 'libre' ? 'libre' : 'expositor';
+  const orientation = formData.get('orientation') === 'horizontal' ? 'horizontal' : 'vertical';
 
   const model = String(formData.get('model') || '').trim() || DEFAULT_IMAGE_MODEL;
 
@@ -38,8 +39,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const prompt = buildDesignPrompt({ kind, description, referenceImageCount: referenceImages.length });
-    const images = await generateDesignSketches({ apiKey: settings.apiKey, model, prompt, referenceImages, count, portrait: kind === 'expositor' });
+    const prompt = buildDesignPrompt({ kind, orientation, description, referenceImageCount: referenceImages.length });
+    const images = await generateDesignSketches({ apiKey: settings.apiKey, model, prompt, referenceImages, count,
+      canvas: kind === 'expositor' ? (orientation === 'horizontal' ? '1536x1024' : '1024x1536') : '1024x1024',
+    });
     // Se guarda en el historial; si eso falla (p. ej. la tabla aún no existe) se devuelven las
     // imágenes igual, en memoria, para no perder la generación que ya se pagó.
     const design = await saveDesign({ kind, description, model, images });

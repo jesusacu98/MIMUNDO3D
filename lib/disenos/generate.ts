@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import type { CanvasSize } from '@/lib/disenos/canvas';
 
 // Techo duro del lado del servidor, independiente de lo que pida el formulario: controla el
 // costo de una llamada aunque el fetch se arme a mano.
@@ -12,8 +13,8 @@ export interface GenerateDesignSketchesInput {
   /** Imágenes de referencia (logo, ejemplos de forma/estilo...), si el usuario adjuntó alguna. */
   referenceImages?: File[];
   count: number;
-  /** Los gpt-image-* admiten vertical (1024x1536); el resto queda en cuadrado. */
-  portrait?: boolean;
+  /** Lienzo pedido. Sólo los gpt-image-* admiten vertical/horizontal; el resto queda en cuadrado. */
+  canvas?: CanvasSize;
 }
 
 /** Genera bocetos/mockups (no un modelo 3D) en base64, listos para mostrar/descargar. */
@@ -23,11 +24,11 @@ export async function generateDesignSketches({
   prompt,
   referenceImages,
   count,
-  portrait,
+  canvas,
 }: GenerateDesignSketchesInput): Promise<string[]> {
   const client = new OpenAI({ apiKey });
   const n = Math.min(Math.max(1, Math.round(count)), MAX_COUNT);
-  const size = portrait && model.startsWith('gpt-image') ? '1024x1536' : '1024x1024';
+  const size: CanvasSize = canvas && model.startsWith('gpt-image') ? canvas : '1024x1024';
   const images = (referenceImages ?? []).filter((file) => file.size > 0);
 
   // Calidad "auto" a propósito: es la única que funciona igual en toda la lista de modelos

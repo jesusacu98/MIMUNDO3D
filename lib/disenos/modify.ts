@@ -1,4 +1,6 @@
 import OpenAI, { toFile } from 'openai';
+import sharp from 'sharp';
+import { pickCanvas } from '@/lib/disenos/canvas';
 import type { DesignKind } from '@/lib/disenos/promptBuilder';
 
 // Edita un boceto ya generado con una instrucción nueva ("me gustó, pero agregale tal elemento").
@@ -24,7 +26,7 @@ export function buildModifyPrompt(kind: DesignKind, instructions: string): strin
 export const FRONTAL_PROMPT = [
   'Rehaz la pieza de la imagen adjunta como una fotografía COMPLETAMENTE FRONTAL: la cámara está de frente y perpendicular a la placa, a la altura de su centro, sin giro ni ángulo de tres cuartos ni perspectiva; no se ve el grosor ni los costados de la pieza, sólo su cara.',
   'Reconstruye la forma real: lo que en la foto original parece un óvalo achatado es un círculo PERFECTO, los recuadros de QR son cuadrados exactos, los íconos de redes son círculos perfectos y la placa recupera su ancho real.',
-  'Conserva todo lo demás igual: mismos elementos, textos, colores, adornos y su posición relativa; mismo estilo de foto realista sobre mesa con fondo desenfocado de interior de negocio. La pieza completa (placa y base) cabe en el encuadre, centrada y con un poco de margen.',
+  'Conserva todo lo demás igual: mismos elementos, textos, colores, adornos y su posición relativa; mismo estilo de foto realista sobre mesa con fondo desenfocado de interior de negocio. La pieza completa (placa y base) cabe en el encuadre, centrada y con un poco de margen, con la misma proporción ancho/alto que tiene la pieza real (si es más ancha que alta, sigue siéndolo).',
   KEEP_RULES.expositor,
 ].join(' ');
 
@@ -46,14 +48,19 @@ export async function modifyDesignSketch({ apiKey, model, kind, imageDataUrl, in
   if (!match) throw new Error('La imagen del boceto no es válida.');
   const [, mime, b64] = match;
 
+  // El resultado sale en el mismo formato (vertical, cuadrado u horizontal) que la imagen original.
+  const buffer = Buffer.from(b64, 'base64');
+  const meta = await sharp(buffer).metadata();
+  const canvas = pickCanvas((meta.width ?? 1) / (meta.height ?? 1));
+
   const client = new OpenAI({ apiKey });
-  const file = await toFile(Buffer.from(b64, 'base64'), `boceto.${mime.split('/')[1]}`, { type: mime });
+  const file = await toFile(buffer, `boceto.${mime.split('/')[1]}`, { type: mime });
   const response = await client.images.edit({
     model,
     image: file,
     prompt: frontal ? FRONTAL_PROMPT : buildModifyPrompt(kind, instructions),
     n: 1,
-    size: kind === 'expositor' ? '1024x1536' : '1024x1024',
+    size: canvas.size,
     quality: 'auto',
   });
 

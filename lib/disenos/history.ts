@@ -14,6 +14,10 @@ export interface DesignRecord {
   imageUrls: string[];
   /** PNG para Fusion por variante; la clave es el índice del boceto. */
   fusionUrls: Record<string, string>;
+  /** Pedido al que se vinculó una variante de esta generación (null si no tiene). */
+  orderId: string | null;
+  /** Índice del boceto vinculado: el que eligió el cliente. */
+  orderVariant: number | null;
   createdAt: string;
 }
 
@@ -26,6 +30,8 @@ export function toDesignRecord(row: DesignRow): DesignRecord {
     model: row.model,
     imageUrls: row.image_urls ?? [],
     fusionUrls: fusion as Record<string, string>,
+    orderId: row.order_id ?? null,
+    orderVariant: row.order_variant ?? null,
     createdAt: row.created_at,
   };
 }

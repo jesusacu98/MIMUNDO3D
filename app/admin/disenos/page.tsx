@@ -7,6 +7,8 @@ import { toDesignRecord } from '@/lib/disenos/history';
 import DisenosForm from './DisenosForm';
 
 const HISTORY_LIMIT = 30;
+// Pedidos que se ofrecen en "Vincular a pedido" (los más recientes primero).
+const ORDERS_LIMIT = 300;
 
 export default async function DisenosPage() {
   const supabaseAuth = await createServerSupabaseClient();
@@ -26,6 +28,16 @@ export default async function DisenosPage() {
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT);
 
+  const { data: orderRows } = await supabaseAdmin
+    .from('orders')
+    .select('id, client_name, order_date, order_status')
+    .order('created_at', { ascending: false })
+    .limit(ORDERS_LIMIT);
+  const orders = (orderRows ?? []).map((o) => ({
+    id: o.id,
+    label: [o.client_name, o.order_date ? o.order_date.split('-').reverse().join('/') : null, o.order_status].filter(Boolean).join(' · '),
+  }));
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -43,7 +55,7 @@ export default async function DisenosPage() {
           </p>
         </div>
 
-        <DisenosForm initialHistory={(historyRows ?? []).map(toDesignRecord)} historyMissing={Boolean(historyError)} />
+        <DisenosForm orders={orders} initialHistory={(historyRows ?? []).map(toDesignRecord)} historyMissing={Boolean(historyError)} />
       </main>
     </div>
   );
