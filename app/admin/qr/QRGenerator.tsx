@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Download, QrCode as QrCodeIcon } from 'lucide-react';
-import { buildQrSvg, downloadSvg, type QrShape } from '@/lib/qr';
+import { buildQrSvg, buildWifiPayload, downloadSvg, type QrShape, type WifiSecurity } from '@/lib/qr';
 
 const inputClass =
   'w-full mt-2 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm transition-all';
@@ -12,18 +12,28 @@ export default function QRGenerator() {
   const [url, setUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [shape, setShape] = useState<QrShape>('square');
+  const [mode, setMode] = useState<'url' | 'wifi'>('url');
+  const [ssid, setSsid] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
+  const [security, setSecurity] = useState<WifiSecurity>('WPA');
+  const [hidden, setHidden] = useState(false);
 
   // buildQrSvg es síncrona: no hace falta useEffect/estado para esto,
   // se calcula directo en el render (memoizado para no rehacerlo de más).
   const { svg, error } = useMemo(() => {
-    const trimmedUrl = url.trim();
-    if (!trimmedUrl) return { svg: null, error: null };
+    const data =
+      mode === 'url'
+        ? url.trim()
+        : ssid.trim()
+          ? buildWifiPayload({ ssid: ssid.trim(), password: wifiPassword, security, hidden })
+          : '';
+    if (!data) return { svg: null, error: null };
     try {
-      return { svg: buildQrSvg(trimmedUrl, { shape }), error: null };
+      return { svg: buildQrSvg(data, { shape }), error: null };
     } catch {
       return { svg: null, error: 'No se pudo generar el QR con ese texto.' };
     }
-  }, [url, shape]);
+  }, [mode, url, ssid, wifiPassword, security, hidden, shape]);
 
   const ready = svg !== null;
 
@@ -35,19 +45,69 @@ export default function QRGenerator() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       <div className="bg-white border border-zinc-200/60 rounded-2xl p-6 sm:p-8 space-y-6">
-        <div>
-          <label htmlFor="url" className={labelClass}>
-            URL <span className="text-primary">*</span>
-          </label>
-          <input
-            id="url"
-            type="text"
-            placeholder="https://mimundo3d.studio/..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className={inputClass}
-          />
+        <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Tipo de código">
+          {([['url', 'Enlace (URL)'], ['wifi', 'Red Wi-Fi']] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={mode === value}
+              onClick={() => setMode(value)}
+              className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                mode === value ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+        {mode === 'url' ? (
+          <div>
+            <label htmlFor="url" className={labelClass}>
+              URL <span className="text-primary">*</span>
+            </label>
+            <input
+              id="url"
+              type="text"
+              placeholder="https://mimundo3d.studio/..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="ssid" className={labelClass}>
+                Nombre de la red (SSID) <span className="text-primary">*</span>
+              </label>
+              <input id="ssid" type="text" placeholder="ej. Cafe_Luna" value={ssid} onChange={(e) => setSsid(e.target.value)} className={inputClass} autoComplete="off" />
+            </div>
+            <div>
+              <label htmlFor="security" className={labelClass}>
+                Seguridad
+              </label>
+              <select id="security" value={security} onChange={(e) => setSecurity(e.target.value as WifiSecurity)} className={inputClass}>
+                <option value="WPA">WPA/WPA2/WPA3 (la más común)</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">Sin contraseña</option>
+              </select>
+            </div>
+            {security !== 'nopass' && (
+              <div>
+                <label htmlFor="wifiPassword" className={labelClass}>
+                  Contraseña
+                </label>
+                <input id="wifiPassword" type="text" value={wifiPassword} onChange={(e) => setWifiPassword(e.target.value)} className={inputClass} autoComplete="off" />
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-sm text-zinc-700 cursor-pointer">
+              <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} className="accent-primary" />
+              Red oculta
+            </label>
+            <p className="text-xs text-zinc-500">Al escanearlo con la cámara del celular, se ofrece conectarse a la red directamente. Todo se genera en tu navegador; la contraseña no se envía a ningún servidor.</p>
+          </div>
+        )}
         <div>
           <span className={labelClass}>Forma</span>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -98,7 +158,7 @@ export default function QRGenerator() {
           ) : (
             <div className="flex flex-col items-center gap-2 text-zinc-300 px-6 text-center">
               <QrCodeIcon className="w-12 h-12" />
-              <p className="text-xs text-zinc-400">{error ?? 'Escribe una URL para generar el código QR'}</p>
+              <p className="text-xs text-zinc-400">{error ?? (mode === 'url' ? 'Escribe una URL para generar el código QR' : 'Escribe el nombre de la red para generar el código QR')}</p>
             </div>
           )}
         </div>

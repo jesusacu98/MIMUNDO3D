@@ -86,6 +86,18 @@ export function buildQrSvg(data: string, options: BuildQrSvgOptions = {}): strin
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim} ${dim}"><path d="${path}" fill="#000000"/></svg>`;
 }
 
+export type WifiSecurity = 'WPA' | 'WEP' | 'nopass';
+
+// Formato estándar que leen las cámaras de iOS y Android para unirse a una red:
+// WIFI:T:<WPA|WEP|nopass>;S:<red>;P:<clave>;H:<true>;;  — \ ; , : " van escapados con \.
+export function buildWifiPayload({ ssid, password, security, hidden }: { ssid: string; password: string; security: WifiSecurity; hidden: boolean }): string {
+  const esc = (value: string) => value.replace(/([\\;,:"])/g, '\\$1');
+  const parts = [`T:${security}`, `S:${esc(ssid)}`];
+  if (security !== 'nopass') parts.push(`P:${esc(password)}`);
+  if (hidden) parts.push('H:true');
+  return `WIFI:${parts.join(';')};;`;
+}
+
 export function sanitizeSvgFileName(name: string): string {
   const trimmed = name.trim() || 'qr';
   const safe = trimmed.replace(/[\\/:*?"<>|]+/g, '-');

@@ -16,7 +16,7 @@ export default async function AdminQRPage() {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 mb-2">Generador de QR</h1>
-        <p className="text-zinc-600 mb-8">Genera un código QR a partir de una URL y descárgalo como imagen.</p>
+        <p className="text-zinc-600 mb-8">Genera un código QR a partir de una URL o para conectarse a una red Wi-Fi, y descárgalo como imagen.</p>
 
         <QRGenerator />
       </main>
